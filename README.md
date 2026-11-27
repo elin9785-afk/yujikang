@@ -1008,4 +1008,4 @@ Spearman ρ = 0.9667 (n=9): GC와 평균 종결 간격의 양의 순위상관이
 - 9종 비교는 기술적·탐색적이며 계통 보정이나 유의성 검정을 하지 않았다.
 - 합성 데이터 동일 환경 반복은 일치했지만 실제 9종 반복 실행, GitHub 새 다운로드 검증, 학교 서버 코드와 일치 확인은 아직 완료되지 않았다.
 
-참고: [NCBI Nucleotide](https://www.ncbi.nlm.nih.gov/nuccore/), [NCBI Genetic Codes](https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi), [Biopython](https://biopython.org/docs/latest/Tutorial/), [Matplotlib](https://matplotlib.org/stable/), [JunKimLabTutorial](https://github.com/JunKimCNU/JunKimLabTutorial) (문서 구성 참고).
+참고: [NCBI Nucleotide](https://www.ncbi.nlm.nih.gov/nuccore/), [NCBI Genetic Codes](https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi), [Biopython](https://biopython.org/docs/latest/Tutorial/), [Matplotlib](https://matplotlib.org/stable/)
