@@ -1009,3 +1009,163 @@ Spearman ρ = 0.9667 (n=9): GC와 평균 종결 간격의 양의 순위상관이
 - 합성 데이터 동일 환경 반복은 일치했지만 실제 9종 반복 실행, GitHub 새 다운로드 검증, 학교 서버 코드와 일치 확인은 아직 완료되지 않았다.
 
 참고: [NCBI Nucleotide](https://www.ncbi.nlm.nih.gov/nuccore/), [NCBI Genetic Codes](https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi), [Biopython](https://biopython.org/docs/latest/Tutorial/), [Matplotlib](https://matplotlib.org/stable/)
+
+## 추가. 실제 재실행 자동 검증
+
+기존 연구 코드와 결과를 변경하지 않고, 새로 계산한 값과 공개된 기준 결과를 비교하는 [verify_reproducibility.py](verify_reproducibility.py)를 추가하였다.
+
+### 공개 데이터로 즉시 검증
+
+4절의 Python 환경 준비 후 저장소 최상위에서 다음 명령어를 실행한다. GitHub에 포함된 실제 B. aphidicola 유전체와 자동 생성 합성 서열만 사용하므로 나머지 8종 데이터를 다운로드할 필요가 없다.
+
+```bash
+python verify_reproducibility.py
+```
+
+이 코드는 원래 분석 소스를 직접 실행하여 소스 체크섬, 실제 입력 체크섬, 29개 검사, 합성 데이터 두 번 실행 결과, 실제 FASTA 6-frame, 실제 GenBank 1종의 CSV 6개를 비교한다. 출력은 임시 폴더에 생성되며 기존 results/를 변경하지 않는다. 불일치 또는 오류가 발생하면 성공으로 처리하지 않는다.
+
+### 9종 전체 검증
+
+현재 GitHub에는 실제 1종만 포함되어 있다. 나머지 8종의 원본 압축 묶음 3개를 data/에 준비하거나 실제 사용한 원본을 확보해야 한다. 파일을 준비한 후 다음 명령어를 실행한다.
+
+```bash
+python verify_reproducibility.py --full
+```
+
+원본 18개 SHA-256, 9종 전체 재분석, 출력 구조 및 그림 생성, 기존 CSV 8개, 입력 해시·seed·반복 수를 비교한다. 기존 9종 결과를 단순히 출력하는 코드가 아니다. 원본이 없거나 비교가 실패하면 0이 아닌 종료 코드로 중단된다. 실행 환경 버전이 다르면 run_info.json의 버전 기록은 달라질 수 있다.
+
+### 추가 검증 코드 전체
+
+```python
+"""Rerun the published pipeline and check its newly generated results."""
+import argparse
+import csv
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+ROOT = Path(__file__).resolve().parent
+SAMPLE = 'B_aphidicola'
+CSV_NAMES = ('strain_summary.csv', 'frames.csv', 'genes.csv', 'regions.csv',
+             'shifts.csv', 'shuffle.csv', 'correlations.csv', 'lifestyle.csv')
+
+
+def require(condition, message):
+    if not condition:
+        raise SystemExit('FAIL: ' + message)
+
+
+def check_hashes(manifest, selected=None):
+    count = 0
+    for line in (ROOT / manifest).read_text().splitlines():
+        expected, name = line.split(maxsplit=1)
+        if selected is not None and name not in selected:
+            continue
+        path = ROOT / name
+        require(path.is_file(), 'Missing file: ' + name)
+        require(hashlib.sha256(path.read_bytes()).hexdigest() == expected,
+                'Checksum mismatch: ' + name)
+        count += 1
+    if selected is not None:
+        require(count == len(selected), 'Incomplete checksum manifest')
+    print(f'PASS: {count} file checksums ({manifest})', flush=True)
+
+
+def run(work, *args):
+    print('RUN:', ' '.join(str(x) for x in args), flush=True)
+    subprocess.run([sys.executable, *map(str, args)], cwd=work, check=True)
+
+
+def rows(path):
+    with path.open(newline='', encoding='utf-8') as f:
+        return list(csv.DictReader(f))
+
+
+def pipeline(work, meta, data, out):
+    run(work, ROOT / 'analyze.py', '--metadata', meta, '--data', data,
+        '--out', out, '--reps', '3', '--seed', '42')
+    run(work, ROOT / 'compare.py', out)
+    run(work, ROOT / 'plot.py', out)
+    run(work, ROOT / 'check_output.py', meta, out, '3')
+
+
+def compare_csv(actual, reference, sample=None):
+    for name in CSV_NAMES:
+        if sample is not None and name in ('correlations.csv', 'lifestyle.csv'):
+            continue
+        expected = rows(reference / name)
+        if sample is not None:
+            expected = [row for row in expected if row['strain'] == sample]
+        require(rows(actual / name) == expected, 'Different CSV: ' + name)
+        print('MATCH:', name, flush=True)
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--full', action='store_true', help='Restore and rerun all nine original genomes')
+    args = p.parse_args()
+    check_hashes('verification/source_sha256.txt')
+    if args.full:
+        run(ROOT, ROOT / 'download_data.py')
+        check_hashes('data/input_sha256.txt')
+    else:
+        check_hashes('data/input_sha256.txt',
+                     {'data/NC_002528.1.gb', 'data/NC_002528.1.fasta'})
+    with tempfile.TemporaryDirectory(prefix='gc_reproduce_') as tmp:
+        work = Path(tmp)
+        run(work, ROOT / 'test_all.py')
+        if not args.full:
+            run(work, ROOT / 'demo.py')
+            pipeline(work, 'demo_strains.csv', 'demo_data', 'demo_a')
+            pipeline(work, 'demo_strains.csv', 'demo_data', 'demo_b')
+            a, b = work / 'demo_a', work / 'demo_b'
+            files = sorted(p.relative_to(a) for p in a.rglob('*') if p.is_file())
+            require(files == sorted(p.relative_to(b) for p in b.rglob('*') if p.is_file()),
+                    'Synthetic output file list differs')
+            for name in files:
+                require((a/name).read_bytes() == (b/name).read_bytes(),
+                        'Synthetic repeat differs: ' + str(name))
+            print(f'PASS: synthetic repeat ({len(files)} files)', flush=True)
+            meta = work / 'single.csv'
+            selected = [row for row in rows(ROOT / 'strains.csv') if row['strain'] == SAMPLE]
+            require(len(selected) == 1, 'Sample metadata missing or duplicated')
+            with meta.open('w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=list(selected[0]))
+                writer.writeheader()
+                writer.writerows(selected)
+            run(work, ROOT / 'analyze.py', '--fasta-only', ROOT / 'data/NC_002528.1.fasta',
+                '--out', 'live')
+            frames = rows(work / 'live/fasta_frames.csv')
+            expected = [r for r in rows(ROOT / 'results/frames.csv')
+                        if r['strain'] == SAMPLE and r['rep'] == '0']
+            require(len(frames) == len(expected) == 6, 'Expected six frames')
+            for actual, ref in zip(frames, expected):
+                require(all(actual[k] == ref[k] for k in ref if k not in ('strain', 'rep')),
+                        'FASTA frame differs: ' + ref['frame'])
+            print('PASS: real FASTA, all six frames match', flush=True)
+        else:
+            meta = ROOT / 'strains.csv'
+        pipeline(work, meta, ROOT / 'data', 'actual')
+        compare_csv(work / 'actual', ROOT / 'results', None if args.full else SAMPLE)
+        if args.full:
+            actual = json.loads((work / 'actual/run_info.json').read_text())
+            expected = json.loads((ROOT / 'results/run_info.json').read_text())
+            for key in ('seed', 'reps', 'inputs'):
+                require(actual[key] == expected[key], 'Different run setting: ' + key)
+            print('PASS: original input hashes, seed and repeat count match', flush=True)
+            if actual == expected:
+                print('MATCH: run_info.json (including versions)', flush=True)
+            else:
+                print('NOTE: environment version differs; CSV values matched exactly', flush=True)
+        print('PASS: FULL nine-genome reproduction' if args.full else
+              'PASS: QUICK public-data reproduction (one genome + synthetic repeats)', flush=True)
+
+
+if __name__ == '__main__':
+    main()
+```
+
+검증 환경: Python 3.13.5, Biopython 1.86, Matplotlib 3.10.8. 공개 소스·데이터·결과 파일과 Git blob SHA가 일치하는 새 로컬 폴더에서 실제 실행하였다. 이 검증은 학교 서버에서의 학생 개인 실행 기록과 구분되며, 교수님 PC에서의 환경 설치나 네트워크 다운로드는 별도로 확인해야 한다.
