@@ -36,6 +36,7 @@ def bars(names,series,ylabel,name):
 
 def scatter(xkey,ykey,xlabel,ylabel,name,xscale=1):
     plt.figure(figsize=(9,6))
+    points = []
     groups = {}
     for r in rows:
         if r[xkey] != '' and r[ykey] != '':
@@ -44,9 +45,26 @@ def scatter(xkey,ykey,xlabel,ylabel,name,xscale=1):
         x = []; y = []
         for r in groups[group]:
             x.append(float(r[xkey])/xscale); y.append(float(r[ykey]))
-            plt.annotate(r['strain'],(x[-1],y[-1]),fontsize=7,xytext=(3,3),textcoords='offset points')
+            points.append((x[-1], y[-1], r['strain']))
         plt.scatter(x,y,label=group)
-    plt.xlabel(xlabel); plt.ylabel(ylabel)
+    ax = plt.gca()
+    ax.margins(x=.15, y=.12)
+    ax.figure.canvas.draw()
+    renderer = ax.figure.canvas.get_renderer()
+    occupied = []
+    for x, y, label in sorted(points):
+        align = 'right' if x > sum(ax.get_xlim()) / 2 else 'left'
+        dx = -4 if align == 'right' else 4
+        note = ax.annotate(label, (x, y), fontsize=8, ha=align,
+                           xytext=(dx, 4), textcoords='offset points')
+        for dy in (4, -10, 16, -22, 28, -34):
+            note.set_position((dx, dy))
+            box = note.get_window_extent(renderer).expanded(1.05, 1.2)
+            if not any(box.overlaps(other) for other in occupied):
+                break
+        occupied.append(box)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
     if groups:
         plt.legend(fontsize=8)
     save(name)

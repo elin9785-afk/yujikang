@@ -1,118 +1,37 @@
-# 세균의 GC 함량과 코딩 영역 특성에 따른 종결 코돈 분포 비교 분석
+# 세균의 GC 함량과 종결 코돈 사이의 거리
 
-**Comparative Analysis of Stop Codon Distribution in Relation to GC Content and Coding Region Characteristics in Bacterial Genomes**
+충남대학교 생명정보융합학과 강유지
 
-충남대학교 생명정보융합학과 202304441 강유지 
+GC 함량이 높은 세균에서는 같은 읽기 틀의 다음 종결 코돈까지 거리가 더 길까? 처음에는 *Clostridioides difficile*과 *Streptomyces coelicolor*를 비교했고, 최종 분석에서는 세균 9종의 대표 염색체를 하나씩 사용했다.
 
-`Python` · `Biopython` · `Matplotlib` · `NCBI RefSeq`
+![세균 9종의 GC 함량과 평균 종결 간격](results/figures/02_gc_gap.png)
 
-[분석 결과](results/) · [실행 방법](#7-실행과-재현성-확인) · [검증 기록](verification/reproduce_check.txt)
+## 무엇을 셌나
 
-## 목차
+DNA 양쪽 가닥을 세 위치에서 읽었다. 같은 틀에서 종결 코돈 두 개를 만날 때마다 그 사이의 코돈 수를 기록했다. 예를 들어 `TAA AAA GGC TAG`의 간격은 2코돈이다. 여섯 틀의 간격을 모두 합쳐 평균을 냈다. 첫 종결 앞과 마지막 종결 뒤의 구간, 모호한 코돈을 가로지르는 구간, 염색체 양 끝을 잇는 구간은 제외했다. GC 함량의 분모는 A, C, G, T의 총수다.
 
-- [1. 연구 배경과 목적](#1-연구-배경과-목적)
-- [2. LLM을 활용한 학습 내용](#2-llm을-활용한-학습-내용)
-- [3. 분석 대상과 원본 데이터](#3-분석-대상과-원본-데이터)
-- [4. 실행 환경과 데이터 준비](#4-실행-환경과-데이터-준비)
-- [5. 초기 2종 분석 코드](#5-초기-2종-분석-코드)
-- [6. 최종 9종 분석 전체 코드](#6-최종-9종-분석-전체-코드)
-- [7. 실행과 재현성 확인](#7-실행과-재현성-확인)
-- [8. 실제 분석 결과](#8-실제-분석-결과)
-- [9. 분석의 한계 및 참고자료](#9-분석의-한계-및-참고자료)
-
-## 파일 구성
-
-| 위치 | 내용 |
-|---|---|
-| 최상위 Python·Bash 파일 | 최종 분석, 시각화, 테스트 및 자동 실행 |
-| [initial/](initial/) | 초기 2종 분석 코드와 기존 결과 |
-| [data/](data/) | 실제 1종 실습 데이터, 전체 원본 체크섬 |
-| [results/](results/) | 최종 9종 분석 CSV 및 실행 설정 |
-| [verification/](verification/) | 실행 환경, 소스 체크섬, 검증 로그 |
-
-## 1. 연구 배경과 목적
-
-GC 함량이 다른 두 세균의 종결 코돈 분포를 비교하는 초기 연구에서 출발하여, 9종의 유전체로 분석 대상을 확장했다.
-GC 함량만으로 종결 코돈 간격의 차이를 설명할 수 있는지, 염기 배열과 코딩 영역의 특성이 어떤 관련성을 보이는지 비교하는 것이 목적이다.
-
-```mermaid
-flowchart TD
-    A[NCBI GenBank 9종] --> B[GC 함량 및 6-frame 종결 간격]
-    A --> C[CDS 주석 분석]
-    B --> D[염기 조성 유지 셔플]
-    C --> E[CDS와 비CDS 비교]
-    C --> F[CDS 길이 및 코딩 밀도]
-    C --> G[읽기 틀 이동]
-    D --> H[균주별 비교]
-    E --> H
-    F --> H
-    G --> H
-    H --> I[CSV 및 그림 8종]
-    I --> J[코드 및 출력 검증]
-```
-
-## 2. LLM을 활용한 학습 내용
-
-처음에는 GC 함량과 종결 코돈 분포를 비교하는 분석부터 시작했다.
-이후 LLM을 활용하여 분석 대상을 9종으로 확장하는 방법과, 입력부터 출력까지 연결하는 파이프라인 구조를 질문했다. 
-단순한 수치 비교를 넘어서 염기 조성을 보존한 대조군과 실제 CDS 주석을 이용하는 방향을 구체화했다.
-
-### Python과 Biopython
-
-- FASTA는 주로 서열을 제공하고 GenBank는 서열과 주석을 함께 제공한다. `SeqIO.parse()`를 사용하면 여러 레코드를 읽을 수 있다.
-- 정방향과 역상보 방향에 각각 세 읽기 틀이 존재한다. `for`, `range()`, 조건문을 이용하여 코돈을 3염기씩 탐색하는 구조를 코드로 표현했다.
-- 계산을 함수로 나누고, 여러 종의 데이터를 CSV에 저장하도록 구성하는 방법을 학습 주제로 삼았다.
-
-### 생물학적 분석을 코드로 구현하기
-
-- GC 함량을 계산할 때 유효한 A/C/G/T만 분모에 포함하는 방식과 초기 코드의 정의를 구분한다.
-- 종결 코돈 간격과 실제 CDS 길이는 같은 값이 아니다. GenBank의 CDS 좌표와 방향을 반영해 실제 서열을 추출해야 한다.
-- 염기 조성을 유지한 셔플은 단일 염기의 개수를 통제하지만 코돈 사용과 이염기 조성을 통제하지 못한다.
-- CDS와 비CDS의 비교에서는 겹치는 CDS 좌표의 중복을 제거하고, 비CDS를 기능이 없는 DNA로 단정하지 않는다.
-
-### 검증과 재현성
-
-LLM에 다른 서열에서도 작동하는 방법, 예외 처리, 단위 검사와 자동 실행을 요청했다.
-코드가 생성되었다는 사실만으로 실행 성공을 판단할 수 없으므로 입력 파일, 난수 seed, 패키지 버전 및 출력 결과를 함께 기록하는 방식으로 구성했다.
-
-LLM(ChatGPT)은 분석 설계, 코드 작성·수정, 문서 정리 및 별도 실행 환경에서의 검증을 보조하는 데 활용했다.
-
-## 3. 분석 대상과 원본 데이터
-
-[9종 메타데이터](strains.csv) 
-
-| Species | NCBI RefSeq accession | 분석 그룹 |
+| 질문 | 계산 방법 | 결과 |
 |---|---|---|
-| S_coelicolor | [NC_003888.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_003888.3) | Free_living |
-| P_aeruginosa | [NC_002516.2](https://www.ncbi.nlm.nih.gov/nuccore/NC_002516.2) | Free_living |
-| C_crescentus | [NC_002696.2](https://www.ncbi.nlm.nih.gov/nuccore/NC_002696.2) | Free_living |
-| E_coli | [NC_000913.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_000913.3) | Host_associated |
-| C_difficile | [NC_009089.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_009089.1) | Host_associated |
-| M_tuberculosis | [NC_000962.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_000962.3) | Host_associated |
-| M_leprae | [NC_002677.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_002677.1) | Obligate_intracellular |
-| R_prowazekii | [NC_000963.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_000963.1) | Obligate_intracellular |
-| B_aphidicola | [NC_002528.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_002528.1) | Obligate_intracellular |
+| GC 함량과 간격이 함께 변하나? | 각 염색체의 여섯 읽기 틀을 조사하고 9종의 순위를 비교 | [균주별 요약](results/strain_summary.csv), [상관계수](results/correlations.csv) |
+| 같은 조성에서도 서열 순서가 영향을 주나? | 각 염기의 수와 모호한 염기의 위치를 유지한 채 세 번 섞어 평균 비교 | [셔플 대조군](results/shuffle.csv) |
+| CDS 안팎에서 차이가 있나? | pseudo 표시를 제외한 CDS 좌표를 합친 뒤, CDS와 나머지 구간을 각각 여섯 틀로 조사 | [영역별 빈도와 간격](results/regions.csv) |
+| 주석된 단백질 길이는 어떤가? | 시작·종결과 내부 종결 유무 등을 검사한 CDS에서 아미노산 수 계산 | [CDS별 결과](results/genes.csv) |
+| CDS를 한두 염기 옮겨 읽으면 어떻게 되나? | 검사를 통과한 CDS에서 말단 종결을 떼고 0, 1, 2염기 이동 후 재계산 | [읽기 틀 이동](results/shifts.csv) |
 
-각 종에서 대표 염색체 하나를 사용한다. 
-그룹은 비교를 위한 분류 기준이며 인과관계 또는 계통적으로 독립적인 반복을 의미하지 않는다. 
-GenBank 9개와 FASTA 9개는 실제 제공 원본이며 서로 서열 및 accession이 일치하는 것을 확인하였다.
+비CDS는 여기서 정한 CDS 좌표 밖의 구간이다. RNA와 조절 서열도 포함될 수 있다. 여섯 틀을 훑어 얻은 간격은 DNA 서열의 특성이며, 실제로 번역된 단백질 길이는 별도의 CDS 지표로 비교했다.
 
-대용량 유전체를 압축 해제 상태로 모두 Git에 올리지 않고, 실제 분석에 사용한 accession.version과 [SHA-256 체크섬](data/input_sha256.txt)을 기록한다.
-현재 저장소에는 실제 B. aphidicola의 [GenBank](data/NC_002528.1.gb)와 [FASTA](data/NC_002528.1.fasta)가 실습 예제로 포함되어 있다. 
-나머지 8종은 아래의 원본 압축 묶음 또는 NCBI에서 확보한다.
+## 초기 결과와 달라진 점
 
-| 데이터 준비 방법 | 용도 |
-|---|---|
-| 포함된 실제 유전체 1종 | 다운로드 추가 없이 실습 |
-| NCBI RefSeq 링크 및 EFetch | 나머지 유전체 확보 시도 |
-| 원본 압축 파일 3개 (`originals_01.zip`, `originals_02.zip`, `originals_03.zip`) | 실제 분석에 사용한 원본을 바이트 단위로 복원 |
+| 균주 | 초기 입력 길이 (bp) | 초기 GC / 거리 | 최종 염색체 길이 (bp) | 최종 GC / 간격 |
+|---|---:|---:|---:|---:|
+| *C. difficile* | 4,298,133 | 29.06% / 13.57 | 4,290,252 | 29.06% / 12.57 |
+| *S. coelicolor* | 9,054,847 | 72.00% / 84.25 | 8,667,507 | 72.12% / 84.18 |
 
-원본 압축 묶음은 실제 분석에 사용한 원본으로 구성하였다. 현재 저장소에는 압축 묶음 3개가 포함되어 있지 않다.
+[초기 코드](initial/step1_gc_6frame.py)는 시작 위치부터 첫 종결까지도 세고 끝의 종결 코돈을 거리에 포함한다. [초기 결과표](initial/initial_summary.csv)와 최종 분석은 입력 길이도 다르다. 초기 분석에 쓰인 두 FASTA는 이 저장소에 들어 있지 않다. 최종 분석에서는 처음 계획한 RSCU 대신 셔플 대조군으로 염기 조성을 통제했다. 이 비교만으로 자연선택의 효과를 분리할 수는 없다.
 
+## 실행 방법
 
-## 4. 실행 환경과 데이터 준비
-
-Bash 환경(Linux, WSL 등), Python 3.13.5, Biopython 1.86, Matplotlib 3.10.8로 검증했다.
+Bash와 Python 환경에서 저장소를 복제한다. 원본 압축 파일 3개는 [data](data/)에 있다. 내부의 FASTA와 GenBank는 각각 9개이며 [체크섬](data/input_sha256.txt)으로 확인할 수 있다. 분석에 사용한 accession.version은 [strains.csv](strains.csv)에 기록했다.
 
 ```bash
 git clone https://github.com/elin9785-afk/yujikang.git
@@ -122,87 +41,58 @@ source .venv/bin/activate
 python -m pip install -r requirements-verified.txt
 ```
 
-### 원본 데이터 준비
+**수업 중 시연** — 저장소에 풀어 둔 *Buchnera aphidicola* FASTA로 바로 실행한다. 출력은 여섯 줄이며 `frame`은 읽기 틀, `stops`는 종결 개수, `mean_gap`은 평균 간격이다. 다른 FASTA 경로로 바꿔도 같은 계산을 한다.
 
-GenBank는 `data/NC_*.gb`, FASTA는 `data/NC_*.fasta`에 저장한다.
-원본 압축 묶음 3개를 확보했다면 `data/`에 넣은 뒤 다음을 실행한다.
+```bash
+python analyze.py --fasta-only data/NC_002528.1.fasta --out live
+head -n 7 live/fasta_frames.csv
+```
+
+**9종 전체 분석** — 원본을 복원하고 새 폴더에 결과를 쓴다.
 
 ```bash
 python download_data.py
 sha256sum -c data/input_sha256.txt
+bash run_all.sh strains.csv data reproduced_results 3
 ```
 
-압축본 없이 NCBI에서 원본을 확보하려는 경우 `python download_data.py --ncbi`를 사용할 수 있다. 기존 원본과 체크섬이 일치할 때만 저장하며, 온라인 재다운로드는 아직 검증하지 않았다. 불일치 시 실제 사용 원본이 필요하다.
+[run_all.sh](run_all.sh)는 [테스트](test_all.py), [유전체 분석](analyze.py), [종 간 비교](compare.py), [그림 생성](plot.py), [출력 검사](check_output.py) 순으로 실행한다. `--fasta-only`는 서열만 읽고, CDS 분석에는 GenBank 주석을 사용한다. 다른 GenBank 입력은 `strains.csv`와 같은 열을 가진 별도 목록에 파일명과 번역표를 지정한다.
 
-## 5. 초기 2종 분석 코드
+**재현성 검사** — 아래 명령은 임시 폴더에서 재실행한 결과와 저장된 표를 대조한다.
 
-초기 연구에서는 저GC와 고GC 유전체의 GC 함량 및 여섯 읽기 틀의 종결 거리 지표를 비교했다. 
-아래는 기존 [step1_gc_6frame.py](initial/step1_gc_6frame.py) 코드이다.
-
-
-```python
-import csv
-from Bio import SeqIO
-
-STOP_CODONS = {"TAA", "TAG", "TGA"}
-
-def get_gc_and_6frame_stops(fasta_file):
-    total_gc, total_len = 0, 0
-    stop_dists = []
-
-    for record in SeqIO.parse(fasta_file, "fasta"):
-        seq = record.seq.upper()
-        s_str = str(seq)
-        total_gc += s_str.count('G') + s_str.count('C')
-        total_len += len(s_str)
-
-        for strand in [seq, seq.reverse_complement()]:
-            st = str(strand)
-            for frame in range(3):
-                count = 0
-                for i in range(frame, len(st) - 2, 3):
-                    codon = st[i:i+3]
-                    if set(codon) - {'A', 'T', 'G', 'C'}:
-                        count = 0
-                        continue
-                    count += 1
-                    if codon in STOP_CODONS:
-                        stop_dists.append(count)
-                        count = 0
-
-    gc_pct = round((total_gc / total_len) * 100, 2)
-    mean_dist = round(sum(stop_dists) / len(stop_dists), 2)
-    return total_len, gc_pct, mean_dist
-
-c_len, c_gc, c_dist = get_gc_and_6frame_stops("C_diff_genome.fna")
-s_len, s_gc, s_dist = get_gc_and_6frame_stops("S_coel_genome.fna")
-
-rows = [
-    ["Species", "Genome_bp", "GC_%", "Mean_6Frame_Stop_Dist"],
-    ["Clostridioides difficile", c_len, c_gc, c_dist],
-    ["Streptomyces coelicolor", s_len, s_gc, s_dist]
-]
-
-for r in rows:
-    print(f"{r[0]:<26} {str(r[1]):<12} {str(r[2]):<8} {r[3]}")
-
-with open("initial_summary.csv", "w", newline="") as f:
-    csv.writer(f).writerows(rows)
+```bash
+python verify_reproducibility.py
+python verify_reproducibility.py --full
 ```
 
-초기 결과([기존 CSV](initial/initial_summary.csv)):
+전체 검사에서 원본 18개의 체크섬, 결과 CSV 8개의 모든 행, 입력 해시와 난수 설정(seed 42, 셔플 3회)이 일치했다. Python 3.12 환경에서도 기존 Python 3.13.5 결과와 CSV 값이 같았다. [기존 실행 기록](verification/reproduce_check.txt)
 
-```csv
-Species,Genome_bp,GC_%,Mean_6Frame_Stop_Dist
-Clostridioides difficile,4298133,29.06,13.57
-Streptomyces coelicolor,9054847,72.0,84.25
-```
-초기에 작성했던 코드는 종결 코돈을 포함한 거리 및 시작 구간을 포함하고 전체 염기 길이를 GC 분모로 사용하므로 최종 코드의 지표와 직접 동일시하지 않는다.
+## 9종 비교 결과
 
-## 6. 최종 9종 분석 전체 코드
+| Species | GC (%) | 평균 종결 간격 (codons) | 셔플 평균 간격 | 코딩 밀도 (%) |
+|---|---:|---:|---:|---:|
+| S_coelicolor | 72.12 | 84.18 | 58.70 | 87.20 |
+| P_aeruginosa | 66.56 | 61.82 | 41.98 | 89.19 |
+| C_crescentus | 67.21 | 53.82 | 43.53 | 89.98 |
+| E_coli | 50.79 | 24.83 | 20.90 | 85.75 |
+| C_difficile | 29.06 | 12.57 | 11.32 | 82.48 |
+| M_tuberculosis | 65.61 | 52.28 | 39.89 | 89.47 |
+| M_leprae | 57.80 | 31.70 | 27.51 | 53.17 |
+| R_prowazekii | 29.00 | 11.60 | 11.31 | 73.19 |
+| B_aphidicola | 26.31 | 12.22 | 10.64 | 86.38 |
 
-다음 코드 블록은 실제 제공 데이터로 실행한 검증 버전의 각 파일 원문 전체이다. 
-파일을 직접 작성하는 경우 각 블록을 같은 이름으로 저장한다.
+GC 함량과 평균 종결 간격의 Spearman 순위상관은 0.9667이었다. 9종 모두 원래 서열의 간격이 셔플 평균보다 길었다. 평균 간격과 검증된 CDS의 평균 아미노산 길이 사이의 순위상관은 0.3667이었다. 표본은 9종이고 종 사이의 계통 관계는 보정하지 않았다.
+
+[그림 8개](results/figures/) · [결과표 설명](results/README.md) · [입력과 실행 설정](results/run_info.json)
+
+영역 비교 그림의 세로축은 유효 코돈 1,000개당 종결 빈도다. 평균 간격은 `regions.csv`의 `mean_gap` 열에 있다. 정상 읽기 틀의 내부 종결이 0인 것은 CDS 선별 조건에 따른 결과다.
+
+## LLM 활용 기록
+
+ChatGPT로 역상보 가닥의 읽기 틀을 구현하는 방법과 셔플에서 보존할 조건을 공부했다. 여러 균주의 입력을 처리하는 코드 작성·수정, 문서 정리, 별도 환경의 재실행 검증에도 도움을 받았다.
+
+<details>
+<summary>파일별 전체 코드 보기</summary>
 
 ### Step 01. 필요 라이브러리 — requirements.txt
 
@@ -682,6 +572,7 @@ def bars(names,series,ylabel,name):
 
 def scatter(xkey,ykey,xlabel,ylabel,name,xscale=1):
     plt.figure(figsize=(9,6))
+    points = []
     groups = {}
     for r in rows:
         if r[xkey] != '' and r[ykey] != '':
@@ -690,9 +581,26 @@ def scatter(xkey,ykey,xlabel,ylabel,name,xscale=1):
         x = []; y = []
         for r in groups[group]:
             x.append(float(r[xkey])/xscale); y.append(float(r[ykey]))
-            plt.annotate(r['strain'],(x[-1],y[-1]),fontsize=7,xytext=(3,3),textcoords='offset points')
+            points.append((x[-1], y[-1], r['strain']))
         plt.scatter(x,y,label=group)
-    plt.xlabel(xlabel); plt.ylabel(ylabel)
+    ax = plt.gca()
+    ax.margins(x=.15, y=.12)
+    ax.figure.canvas.draw()
+    renderer = ax.figure.canvas.get_renderer()
+    occupied = []
+    for x, y, label in sorted(points):
+        align = 'right' if x > sum(ax.get_xlim()) / 2 else 'left'
+        dx = -4 if align == 'right' else 4
+        note = ax.annotate(label, (x, y), fontsize=8, ha=align,
+                           xytext=(dx, 4), textcoords='offset points')
+        for dy in (4, -10, 16, -22, 28, -34):
+            note.set_position((dx, dy))
+            box = note.get_window_extent(renderer).expanded(1.05, 1.2)
+            if not any(box.overlaps(other) for other in occupied):
+                break
+        occupied.append(box)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
     if groups:
         plt.legend(fontsize=8)
     save(name)
@@ -1133,138 +1041,4 @@ if __name__ == '__main__':
     main()
 ```
 
-## 7. 실행과 재현성 확인
-
-### 자동 검증
-
-실행 환경 준비 후 저장소 최상위에서 다음 명령을 실행한다.
-
-```bash
-python verify_reproducibility.py
-```
-
-공개된 실제 유전체 1종과 합성 데이터를 새로 분석하여 기존 CSV, 소스 및 입력 체크섬을 비교한다. 기존 results/는 덮어쓰지 않는다.
-
-9종 원본을 준비한 경우:
-
-```bash
-python verify_reproducibility.py --full
-```
-
-### 검증 결과
-
-| 항목 | 결과 |
-|---|---|
-| 단위 및 경계조건 검사 | 29/29 통과 |
-| 합성 데이터 반복 실행 | 출력 17개 일치 |
-| 실제 유전체 1종 | FASTA 6-frame 및 CSV 6개 일치 |
-| 실제 유전체 9종 (별도 원본 준비) | 원본 18개 체크섬, CSV 8개 및 실행 설정 JSON 일치 |
-
-검증 기록: [실행 로그](verification/reproduce_check.txt), [환경](verification/environment.txt). LLM 지원 실행 환경에서 공개 소스와 동일한 파일로 검증한 결과이며, 학교 서버의 개인 실행이나 GitHub 네트워크 복제 검증을 의미하지 않는다.
-
-### 수동 실행
-
-### 작은 예제로 검증
-
-실제 검증에 사용된 소스가 변경되지 않았는지 확인한다.
-
-```bash
-sha256sum -c verification/source_sha256.txt
-```
-
-```bash
-python test_all.py
-python demo.py
-bash run_all.sh demo_strains.csv demo_data demo_results 3
-bash run_all.sh demo_strains.csv demo_data demo_repeat 3
-diff -r demo_results demo_repeat && echo 'Reproducibility PASS'
-```
-
-### 실제 유전체 1종부터 실습하기
-
-저장소에 포함된 실제 [B. aphidicola GenBank](data/NC_002528.1.gb) 및 [FASTA](data/NC_002528.1.fasta)를 이용한다. 
-다음 명령은 9종 전체가 없어도 실행할 수 있다.
-
-```bash
-python analyze.py --fasta-only data/NC_002528.1.fasta --out live
-head -n 7 live/fasta_frames.csv
-```
-
-```bash
-head -n 1 strains.csv > custom_strains.csv
-grep '^B_aphidicola,' strains.csv >> custom_strains.csv
-bash run_all.sh custom_strains.csv data custom_results 3
-```
-
-이 실습은 실제 한 종을 분석하므로 종 간 상관계수는 정의되지 않는다. 9종 분석을 대신하지 않는다.
-
-### 실제 유전체 9종
-
-4절에 따라 원본 데이터를 준비한 후, 18개 파일의 체크섬이 모두 일치할 때 실행한다.
-
-```bash
-sha256sum -c data/input_sha256.txt
-bash run_all.sh strains.csv data reproduced_results 3
-```
-
-난수 seed 42, 셔플 3회. 동일 환경에서 다시 실행하려면 별도의 출력 폴더를 지정한다.
-
-```bash
-bash run_all.sh strains.csv data reproduced_repeat 3
-diff -r reproduced_results reproduced_repeat
-```
-
-같은 환경에서는 CSV와 그림을 비교할 수 있다. 환경이 다를 경우 PNG 바이트 차이가 생길 수 있다. 원래 결과의 `run_info.json`에 입력 해시, 번역표, seed, 반복 수를 기록한다.
-
-### 다른 서열로 실습
-
-```bash
-python analyze.py --fasta-only data/NC_009089.1.fasta --out live
-head -n 7 live/fasta_frames.csv
-```
-
-FASTA만 있을 때는 GC 및 6-frame 지표를 계산한다. 주석 분석은 GenBank가 필요하다.
-
-```bash
-cat > custom_strains.csv <<'CSV'
-strain,file,accession,lifestyle,table
-new_bacteria,new_bacteria.gb,,Unknown,11
-CSV
-bash run_all.sh custom_strains.csv data custom_results 3
-```
-
-한 GenBank에 여러 레코드가 있으면 accession을 지정한다.
-
-## 8. 실제 분석 결과
-
-실제 유전체 9종의 분석 결과이다. [전체 결과 파일](results/)과 [실행 로그](verification/real_run.txt)를 함께 제공한다.
-
-| Species | GC (%) | 평균 종결 간격 (codons) | 셔플 평균 간격 | 코딩 밀도 (%) |
-|---|---:|---:|---:|---:|
-| S_coelicolor | 72.12 | 84.18 | 58.70 | 87.20 |
-| P_aeruginosa | 66.56 | 61.82 | 41.98 | 89.19 |
-| C_crescentus | 67.21 | 53.82 | 43.53 | 89.98 |
-| E_coli | 50.79 | 24.83 | 20.90 | 85.75 |
-| C_difficile | 29.06 | 12.57 | 11.32 | 82.48 |
-| M_tuberculosis | 65.61 | 52.28 | 39.89 | 89.47 |
-| M_leprae | 57.80 | 31.70 | 27.51 | 53.17 |
-| R_prowazekii | 29.00 | 11.60 | 11.31 | 73.19 |
-| B_aphidicola | 26.31 | 12.22 | 10.64 | 86.38 |
-
-Spearman ρ = 0.9667 (n=9): GC와 평균 종결 간격의 양의 순위상관이 관찰되었다. 셔플 평균과 관측값은 기술적으로 비교하며 인과관계를 단정하지 않는다.
-
-공개 결과: [균주 요약](results/strain_summary.csv) · [6-frame](results/frames.csv) · [셔플](results/shuffle.csv) · [영역](results/regions.csv) · [프레임 이동](results/shifts.csv) · [상관](results/correlations.csv) · [그룹 비교](results/lifestyle.csv) · [FASTA 시연](verification/fasta_frames.csv).
-
-[CDS별 기록](results/genes.csv) · [실행 설정 및 입력 해시](results/run_info.json)도 공개한다. 원본 그림 8개는 아직 전송되지 않았으며, 모든 결과 CSV가 있으므로 `python plot.py results`로 다시 생성할 수 있다.
-
-## 9. 분석의 한계 및 참고자료
-
-- GC 비율은 유효 A/C/G/T 염기 기준이다. 종결 간격은 같은 읽기 틀의 두 종결 사이 내부 코돈 수이며 두 종결 자체는 제외한다. 모호한 코돈, 불완전 구간과 원형 염색체의 경계 연결은 제외한다.
-- 종결 빈도는 유효 코돈 1,000개당 종결 코돈 수이다. 여섯 읽기 틀 탐색은 유전자 예측이 아니다.
-- 셔플 대조군은 단일 염기 수와 모호한 위치만 보존한다. 코돈 사용 및 이염기 조성은 유지하지 않는다.
-- 코딩 밀도는 비-pseudo CDS 주석 좌표 합집합의 길이를 염색체 길이로 나눈 값이다. 비CDS에는 RNA, 조절 서열 등이 포함될 수 있다. CDS·비CDS 영역별 스캔은 연속 구간별로 수행한다.
-- 정상 CDS를 검증한 후 말단 종결을 제거하고 읽기 틀 이동을 비교한다. 정상 frame의 내부 종결이 0인 것은 검증의 정의에 따른다.
-- 9종 비교는 기술적·탐색적이며 계통 보정이나 유의성 검정을 하지 않았다.
-- 합성 데이터 및 실제 9종의 동일 환경 재실행 결과는 일치하였다. GitHub 네트워크 복제, 학교 서버 소스 동일성 및 다른 실행 환경은 별도 확인이 필요하다.
-
-참고: [NCBI Nucleotide](https://www.ncbi.nlm.nih.gov/nuccore/), [NCBI Genetic Codes](https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi), [Biopython](https://biopython.org/docs/latest/Tutorial/), [Matplotlib](https://matplotlib.org/stable/)
+</details>
