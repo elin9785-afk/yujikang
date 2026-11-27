@@ -1,0 +1,78 @@
+Reproduction audit — 2026-11-27
+Validation environment: Python 3.13.5, Biopython 1.86, Matplotlib 3.10.8
+Method: fresh local folder, public source and result Git blob SHA matches.
+Verifier Git blob SHA: a7aea279f9d5017c56eb1a86536a142a79f57ce7
+This is a ChatGPT execution environment verification, not a new school-server run or network clone.
+Below are selected lines from actual program output.
+
+$ python verify_reproducibility.py
+PASS: 10 file checksums (verification/source_sha256.txt)
+PASS: 2 file checksums (data/input_sha256.txt)
+29 checks passed
+PASS: metadata order, CSV relationships, 8 figures
+PASS: metadata order, CSV relationships, 8 figures
+PASS: synthetic repeat (17 files)
+PASS: real FASTA, all six frames match
+Analyzing: B_aphidicola
+PASS: metadata order, CSV relationships, 8 figures
+MATCH: strain_summary.csv
+MATCH: frames.csv
+MATCH: genes.csv
+MATCH: regions.csv
+MATCH: shifts.csv
+MATCH: shuffle.csv
+PASS: QUICK public-data reproduction (one genome + synthetic repeats)
+Exit status: 0
+
+Negative comparison test in temporary directory (GC value deliberately altered):
+NEGATIVE TEST: FAIL: Different CSV: strain_summary.csv
+PASS: deliberately altered result was rejected
+
+$ python verify_reproducibility.py --full
+PASS: 10 file checksums (verification/source_sha256.txt)
+Restored and verified: data/NC_003888.3.gb
+Restored and verified: data/NC_003888.3.fasta
+Restored and verified: data/NC_002516.2.gb
+Restored and verified: data/NC_002516.2.fasta
+Restored and verified: data/NC_002696.2.gb
+Restored and verified: data/NC_002696.2.fasta
+Restored and verified: data/NC_000913.3.gb
+Restored and verified: data/NC_000913.3.fasta
+Restored and verified: data/NC_009089.1.gb
+Restored and verified: data/NC_009089.1.fasta
+Restored and verified: data/NC_000962.3.gb
+Restored and verified: data/NC_000962.3.fasta
+Restored and verified: data/NC_002677.1.gb
+Restored and verified: data/NC_002677.1.fasta
+Restored and verified: data/NC_000963.1.gb
+Restored and verified: data/NC_000963.1.fasta
+OK: data/NC_002528.1.gb
+OK: data/NC_002528.1.fasta
+PASS: all original input checksums match
+PASS: 18 file checksums (data/input_sha256.txt)
+29 checks passed
+Analyzing: S_coelicolor
+Analyzing: P_aeruginosa
+Analyzing: C_crescentus
+Analyzing: E_coli
+Analyzing: C_difficile
+Analyzing: M_tuberculosis
+Analyzing: M_leprae
+Analyzing: R_prowazekii
+Analyzing: B_aphidicola
+PASS: metadata order, CSV relationships, 8 figures
+MATCH: strain_summary.csv
+MATCH: frames.csv
+MATCH: genes.csv
+MATCH: regions.csv
+MATCH: shifts.csv
+MATCH: shuffle.csv
+MATCH: correlations.csv
+MATCH: lifestyle.csv
+PASS: original input hashes, seed and repeat count match
+MATCH: run_info.json (including versions)
+PASS: FULL nine-genome reproduction
+Exit status: 0
+
+Limit: full mode requires the three original data archives or original files.
+At the time of this audit, the public repository contained only one original genome pair.
