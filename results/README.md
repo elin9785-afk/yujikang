@@ -16,12 +16,10 @@
 
 ## 그래프 생성
 
-저장소 최상위에서 실행한다.
+
 
 ```bash
 python plot.py results
 ```
 
-결과 그래프 8개는 `results/figures/`에 생성된다. 현재 원본 PNG는 저장소에 포함되어 있지 않다.
-
-[연구 및 전체 코드](../README.md) · [재실행 검증 기록](../verification/reproduce_check.txt)
+결과 그래프 8개는 `results/figures/`에 생성된다. 
