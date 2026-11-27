@@ -8,6 +8,15 @@
 
 > 초기 2종 실습의 실제 공개 코드와 기존 결과를 먼저 기록한다. 9종 확장 분석은 학교 서버에서 사용한 최종 소스 원문과 결과를 확인한 후 추가한다. 아래는 현재 확인 가능한 범위이며 최종 재현성 검증 완료를 뜻하지 않는다.
 
+## 실습 자료 바로가기
+
+| 자료 | 내용 |
+|---|---|
+| [LLM 활용 학습 기록](docs/LLM_learning_log.md) | 질문, 코드 개발 과정, 검증 및 성찰 기록 |
+| [작은 FASTA 실습](examples/README.md) | 새로 만든 합성 서열 2개와 예상 결과 비교 |
+| [입력 데이터 안내](data/README.md) | 실제 NCBI 원본과 합성 데이터 구분 및 준비 방법 |
+| [requirements.txt](requirements.txt) | 초기 실습에 필요한 라이브러리 |
+
 ## Contents
 
 1. [연구 배경](#1-연구-배경)
@@ -17,7 +26,8 @@
 5. [실행과 결과 확인](#5-실행과-결과-확인)
 6. [9종 확장 분석](#6-9종-확장-분석)
 7. [재현성 및 해석의 한계](#7-재현성-및-해석의-한계)
-8. [참고자료](#8-참고자료)
+8. [LLM 활용 학습 기록](#8-llm-활용-학습-기록)
+9. [참고자료](#9-참고자료)
 
 ## 1. 연구 배경
 
@@ -115,6 +125,25 @@ with open("initial_summary.csv", "w", newline="") as f:
 
 ## 5. 실행과 결과 확인
 
+### 작은 입력으로 먼저 검증하기
+
+실제 유전체를 준비하기 전에 저장소의 [합성 FASTA 실습 자료](examples/README.md)를 사용한다. 초기 코드의 입력 파일명과 호환되도록 구성했으며, 실제 세균의 결과가 아니다.
+
+```bash
+python -m pip install -r requirements.txt
+cd examples
+python ../step1_gc_6frame.py
+cat initial_summary.csv
+```
+
+[예상 결과 CSV](examples/expected_summary.csv)와 비교한다. 자세한 검증 명령은 실습 자료 설명서에 있다. 이후 최상위 폴더로 돌아온다.
+
+```bash
+cd ..
+```
+
+### 실제 초기 유전체 분석
+
 ```bash
 python step1_gc_6frame.py
 cat initial_summary.csv
@@ -189,7 +218,11 @@ flowchart TD
 
 최종 9종 분석의 코드 원문, 데이터, 실행 환경 및 실제 재현성 기록은 아직 이 저장소에서 확인되지 않았다.
 
-## 8. 참고자료
+## 8. LLM 활용 학습 기록
+
+[LLM 활용 학습 및 코드 개발 기록](docs/LLM_learning_log.md)에 프로젝트에서 실제로 요청한 질문의 요약, 코드 개념과 개선 방향, 검증 상태를 정리하였다. 본인의 실제 오류 해결 과정, 실행 근거, 학습 성찰은 학생이 확인하여 추가한다. AI가 제안한 내용과 학생이 직접 실행·확인한 내용을 구분한다.
+
+## 9. 참고자료
 
 - [NCBI Nucleotide](https://www.ncbi.nlm.nih.gov/nuccore/)
 - [Biopython Tutorial](https://biopython.org/docs/latest/Tutorial/)
