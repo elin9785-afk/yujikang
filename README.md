@@ -91,8 +91,9 @@ GC 함량과 평균 종결 간격의 Spearman 순위상관은 0.9667이었다. 9
 
 ChatGPT로 역상보 가닥의 읽기 틀을 구현하는 방법과 셔플에서 보존할 조건을 공부했다. 여러 균주의 입력을 처리하는 코드 작성·수정, 문서 정리, 별도 환경의 재실행 검증에도 도움을 받았다.
 
-<details>
-<summary>파일별 전체 코드 보기</summary>
+## 파일별 전체 코드
+
+아래 Step 01–13은 최종 9종 분석의 전체 소스 및 설정 파일이다. 각 코드 블록을 해당 파일명으로 저장할 수 있으며, 위의 실행 방법에 따라 순서대로 분석과 검증을 수행한다. 원본 데이터는 `data/`에 포함된 압축 파일에서 복원한다.
 
 ### Step 01. 필요 라이브러리 — requirements.txt
 
@@ -1041,4 +1042,56 @@ if __name__ == '__main__':
     main()
 ```
 
-</details>
+## 초기 2종 분석 코드 (참고)
+
+[initial/step1_gc_6frame.py](initial/step1_gc_6frame.py)의 전체 원문이다. 최종 9종 분석에는 위 Step 01–13을 사용한다. 초기 분석의 입력 FASTA는 현재 저장소에 포함되어 있지 않다.
+
+```python
+import csv
+from Bio import SeqIO
+
+STOP_CODONS = {"TAA", "TAG", "TGA"}
+
+def get_gc_and_6frame_stops(fasta_file):
+    total_gc, total_len = 0, 0
+    stop_dists = []
+
+    for record in SeqIO.parse(fasta_file, "fasta"):
+        seq = record.seq.upper()
+        s_str = str(seq)
+        total_gc += s_str.count('G') + s_str.count('C')
+        total_len += len(s_str)
+
+        for strand in [seq, seq.reverse_complement()]:
+            st = str(strand)
+            for frame in range(3):
+                count = 0
+                for i in range(frame, len(st) - 2, 3):
+                    codon = st[i:i+3]
+                    if set(codon) - {'A', 'T', 'G', 'C'}:
+                        count = 0
+                        continue
+                    count += 1
+                    if codon in STOP_CODONS:
+                        stop_dists.append(count)
+                        count = 0
+
+    gc_pct = round((total_gc / total_len) * 100, 2)
+    mean_dist = round(sum(stop_dists) / len(stop_dists), 2)
+    return total_len, gc_pct, mean_dist
+
+c_len, c_gc, c_dist = get_gc_and_6frame_stops("C_diff_genome.fna")
+s_len, s_gc, s_dist = get_gc_and_6frame_stops("S_coel_genome.fna")
+
+rows = [
+    ["Species", "Genome_bp", "GC_%", "Mean_6Frame_Stop_Dist"],
+    ["Clostridioides difficile", c_len, c_gc, c_dist],
+    ["Streptomyces coelicolor", s_len, s_gc, s_dist]
+]
+
+for r in rows:
+    print(f"{r[0]:<26} {str(r[1]):<12} {str(r[2]):<8} {r[3]}")
+
+with open("initial_summary.csv", "w", newline="") as f:
+    csv.writer(f).writerows(rows)
+```
