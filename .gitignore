@@ -9,3 +9,8 @@ pilot_results/
 live/
 custom_results/
 results_*/
+# Large raw genomes restored locally; keep the tracked teaching example.
+/data/*.gb
+/data/*.fasta
+!/data/NC_002528.1.gb
+!/data/NC_002528.1.fasta

@@ -77,7 +77,15 @@ LLM에 다른 서열에서도 작동하는 방법, 예외 처리, 단위 검사�
 
 각 종에서 대표 염색체 하나를 사용한다. 그룹은 비교를 위한 분류 기준이며 인과관계 또는 계통적으로 독립적인 반복을 의미하지 않는다. GenBank 9개와 FASTA 9개는 실제 제공 원본이며 서로 서열 및 accession이 일치하는 것을 확인하였다.
 
-**현재 B. aphidicola의 원본 GenBank와 FASTA 2개를 공개했다.** 나머지 8종의 GenBank·FASTA 원본은 추가 전송이 필요하다. 아래 원본 체크섬과 NCBI 링크를 이용하여 확보하고 검증할 수 있다. NCBI에서 내려받은 주석이나 파일 형식이 달라져 체크섬이 불일치할 수 있으므로 해당 경우에는 실제 사용 원본을 확보해야 한다.
+대용량 유전체를 압축 해제 상태로 모두 Git에 올리지 않고, 실제 분석에 사용한 accession.version과 [SHA-256 체크섬](data/input_sha256.txt)을 기록한다. 현재 저장소에는 실제 B. aphidicola의 [GenBank](data/NC_002528.1.gb)와 [FASTA](data/NC_002528.1.fasta)가 실습 예제로 포함되어 있다. 나머지 8종은 아래의 원본 압축 묶음 또는 NCBI에서 확보한다.
+
+| 데이터 준비 방법 | 용도 |
+|---|---|
+| 포함된 실제 유전체 1종 | 다운로드 추가 없이 실습 |
+| NCBI RefSeq 링크 및 EFetch | 나머지 유전체 확보 시도 |
+| 원본 압축 파일 3개 (`originals_01.zip`, `originals_02.zip`, `originals_03.zip`) | 실제 분석에 사용한 원본을 바이트 단위로 복원 |
+
+원본 압축 묶음은 실제 제공 원본으로 만들고 18개 전체 체크섬을 검증했으나, 아직 이 저장소에 업로드되지 않은 외부 준비 자료이다. NCBI에서 새로 받은 주석 또는 FASTA 헤더가 달라질 수 있으므로 accession 일치만으로 기존 원본과 동일하다고 판단하지 않는다.
 
 ## 4. 실행 환경과 데이터 준비
 
@@ -91,48 +99,98 @@ source .venv/bin/activate
 python -m pip install -r requirements-verified.txt
 ```
 
-GenBank 원본은 `data/NC_*.gb`, FASTA는 `data/NC_*.fasta`에 둔다. 실제 원본을 확보했다면 다운로드를 건너뛰고 체크섬만 검사한다. 아래는 NCBI에서 원본을 복구하기 위해 추가한 보조 코드로, 원래 분석 코드와 구분한다. SHA-256이 정확하게 일치하는 응답만 저장하며, 기존 파일을 덮어쓰지 않는다. 네트워크 다운로드 자체는 아직 확인되지 않았다.
+### 원본 데이터 준비
+
+GenBank는 `data/NC_*.gb`, FASTA는 `data/NC_*.fasta`에 저장한다. 이미 원본을 갖고 있으면 같은 위치에 복사한다. 원본 압축 묶음 3개를 확보했다면 압축을 풀지 않고 `data/`에 넣은 뒤 다음을 실행한다.
+
+```bash
+python download_data.py
+sha256sum -c data/input_sha256.txt
+```
+
+압축본 없이 NCBI에서 확보하려면 다음과 같이 실행한다.
+
+```bash
+python download_data.py --ncbi
+```
+
+원본 SHA-256이 일치하는 응답만 저장한다. 현재 네트워크 다운로드는 검증되지 않았으므로 일치하지 않으면 실제 원본 또는 압축 묶음을 확보해야 한다. 로컬 원본 압축 복원과 18개 전체 체크섬 일치는 검증 완료하였다. 다음 보조 코드는 원래 분석 코드를 변경하지 않고 원본 확보 과정만 지원한다.
+
+[download_data.py](download_data.py)
 
 ```python
+"""Restore exact original inputs from ZIP archives or NCBI EFetch."""
 import hashlib
 from pathlib import Path
 from time import sleep
 from urllib.parse import urlencode
-from urllib.request import urlopen, Request
+from urllib.request import Request, urlopen
+from zipfile import ZipFile
+import argparse
 
-# Download only missing files. Never overwrite existing original files.
-# EFetch may return changed annotations; reject any byte mismatch.
-for line in Path("data/input_sha256.txt").read_text().splitlines():
-    expected, name = line.split(maxsplit=1)
-    target = Path(name)
-    if target.exists():
-        if hashlib.sha256(target.read_bytes()).hexdigest() != expected:
-            raise SystemExit(f"Checksum mismatch: {target}")
-        print("Verified:", target)
-        continue
-    accession = target.stem
-    rettypes = ["gbwithparts", "gb"] if target.suffix == ".gb" else ["fasta"]
-    for rettype in rettypes:
-        query = urlencode({"db": "nuccore", "id": accession,
-                           "rettype": rettype, "retmode": "text",
-                           "tool": "gc_stop_tutorial"})
-        url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?" + query
-        with urlopen(Request(url, headers={"User-Agent": "GC-stop-tutorial/1.0"}), timeout=180) as response:
-            payload = response.read()
-        sleep(0.5)
-        if hashlib.sha256(payload).hexdigest() == expected:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(payload)
-            print("Verified and saved:", target)
-            break
-    else:
-        raise SystemExit(f"NCBI response differs from original: {target}. Obtain the original uploaded input.")
-```
 
-저장소 최상위에서 `python download_data.py`로 실행할 수 있다.
+def digest(payload):
+    return hashlib.sha256(payload).hexdigest()
 
-```bash
-sha256sum -c data/input_sha256.txt
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--ncbi', action='store_true', help='Try NCBI for missing files')
+    args = p.parse_args()
+    data = Path('data')
+    manifest = data / 'input_sha256.txt'
+    missing = []
+    archives = sorted(data.glob('originals_*.zip'))
+    for line in manifest.read_text().splitlines():
+        expected, name = line.split(maxsplit=1)
+        target = Path(name)
+        if target.exists():
+            if digest(target.read_bytes()) != expected:
+                raise SystemExit(f'Checksum mismatch (not overwritten): {target}')
+            print('OK:', target)
+            continue
+        payload = None
+        for archive in archives:
+            with ZipFile(archive) as z:
+                if name in z.namelist():
+                    payload = z.read(name)
+                    if digest(payload) != expected:
+                        raise SystemExit(f'Invalid original in {archive}: {name}')
+                    break
+        if payload is None and args.ncbi:
+            accession = target.stem
+            rettypes = ['gbwithparts', 'gb'] if target.suffix == '.gb' else ['fasta']
+            for rettype in rettypes:
+                query = urlencode({'db': 'nuccore', 'id': accession,
+                                   'rettype': rettype, 'retmode': 'text',
+                                   'tool': 'gc_stop_tutorial'})
+                url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?' + query
+                try:
+                    with urlopen(Request(url, headers={'User-Agent': 'GC-stop-tutorial/1.0'}), timeout=180) as response:
+                        candidate = response.read()
+                except OSError as exc:
+                    print(f'NCBI request failed for {name}: {exc}')
+                    continue
+                finally:
+                    sleep(0.5)
+                if digest(candidate) == expected:
+                    payload = candidate
+                    break
+        if payload is None:
+            missing.append(name)
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(payload)
+        print('Restored and verified:', target)
+    if missing:
+        print('Missing or not byte-identical to original:')
+        print('\n'.join(missing))
+        raise SystemExit('Obtain the original files or originals_*.zip archives. No mismatched data saved.')
+    print('PASS: all original input checksums match')
+
+
+if __name__ == '__main__':
+    main()
 ```
 
 ## 5. 초기 2종 분석 코드
@@ -953,6 +1011,8 @@ bash run_all.sh custom_strains.csv data custom_results 3
 이 실습은 실제 한 종을 분석하므로 종 간 상관계수는 정의되지 않는다. 9종 분석을 대신하지 않는다.
 
 ### 실제 유전체 9종
+
+4절에 따라 원본 데이터를 준비한 후, 18개 파일의 체크섬이 모두 일치할 때 실행한다.
 
 ```bash
 sha256sum -c data/input_sha256.txt
