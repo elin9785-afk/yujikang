@@ -1,0 +1,2 @@
+# Initial tutorial dependency; original server version not yet confirmed.
+biopython
