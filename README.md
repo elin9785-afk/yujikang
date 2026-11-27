@@ -4,227 +4,160 @@
 
 충남대학교 생명정보융합학과 · 생명정보학 컴퓨팅 기말 대체 프로젝트
 
-`Python` · `Biopython` · `NCBI` · `Comparative genomics`
+`Python` · `Biopython` · `Matplotlib` · `NCBI RefSeq`
 
-> 초기 2종 실습의 실제 공개 코드와 기존 결과를 먼저 기록한다. 9종 확장 분석은 학교 서버에서 사용한 최종 소스 원문과 결과를 확인한 후 추가한다. 아래는 현재 확인 가능한 범위이며 최종 재현성 검증 완료를 뜻하지 않는다.
-
-## 실습 자료 바로가기
-
-| 자료 | 내용 |
-|---|---|
-| [LLM 활용 학습 기록](docs/LLM_learning_log.md) | 질문, 코드 개발 과정, 검증 및 성찰 기록 |
-| [작은 FASTA 실습](examples/README.md) | 새로 만든 합성 서열 2개와 예상 결과 비교 |
-| [입력 데이터 안내](data/README.md) | 실제 NCBI 원본과 합성 데이터 구분 및 준비 방법 |
-| [requirements.txt](requirements.txt) | 초기 실습에 필요한 라이브러리 |
+> **검증 범위:** 최종 발표용 코드로 학생이 제공한 실제 유전체 9종을 ChatGPT 실행 환경에서 1회 분석하였다. 29개 검사 및 8개 그림 생성 검사가 통과하였다. 학교 서버의 최종 소스와 동일한지는 미확인이다. 합성 데이터의 재실행은 일치했으나 실제 9종의 두 번째 실행 및 GitHub 새 다운로드 검증은 아직 필요하다. 원본 파일과 일부 출력 파일은 별도 웹 업로드가 필요하다.
 
 ## Contents
 
-1. [연구 배경](#1-연구-배경)
-2. [입력 데이터](#2-입력-데이터)
-3. [실행 환경 및 서열 준비](#3-실행-환경-및-서열-준비)
-4. [초기 분석 코드 전체](#4-초기-분석-코드-전체)
-5. [실행과 결과 확인](#5-실행과-결과-확인)
-6. [9종 확장 분석](#6-9종-확장-분석)
-7. [재현성 및 해석의 한계](#7-재현성-및-해석의-한계)
-8. [LLM 활용 학습 기록](#8-llm-활용-학습-기록)
-9. [참고자료](#9-참고자료)
+- [연구 목적](#연구-목적)
+- [데이터 준비](#데이터-준비)
+- [처음부터 끝까지 실행](#처음부터-끝까지-실행)
+- [전체 코드](#전체-코드)
+- [실제 분석 결과](#실제-분석-결과)
+- [검증 및 한계](#검증-및-한계)
+- [LLM 학습 기록](docs/LLM_learning_log.md)
+- [초기 2종 분석](docs/initial_analysis.md)
 
-## 1. 연구 배경
+## 연구 목적
 
-GC 함량이 다른 세균에서 종결 코돈 분포가 어떻게 달라지는지 비교하고, 염기 배열과 실제 코딩 영역의 특성도 관련되는지 탐색한다. 초기 분석은 저GC *Clostridioides difficile*과 고GC *Streptomyces coelicolor*를 대상으로 한다.
-
-## 2. 입력 데이터
-
-- [저GC 원본 NCBI 압축 데이터](ncbi_dataset.zip%20%EC%A0%80gc)
-- [고GC 원본 NCBI 압축 데이터](ncbi_dataset.zip%20%EA%B3%A0%20gc)
-- [초기 분석 원본 코드](step1_gc_6frame.py)
-- [초기 분석 기존 결과](initial_summary.csv)
-
-압축 자료는 DNA 입력 데이터이며 코드 압축본이 아니다. 압축 내부의 정확한 accession과 파일 구성은 아직 확인되지 않았다.
-
-## 3. 실행 환경 및 서열 준비
-
-Python 3과 Biopython을 설치한다. 아래는 Bash 환경에서의 재현 예시이며 원래 학교 서버에서 입력한 명령 전체를 확인한 것은 아니다.
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install biopython
-```
-
-원본 압축 자료에서 유전체 nucleotide FASTA를 추출한다. 해당 서열을 아래 두 이름으로 작업 폴더에 배치한다.
-
-| 파일명 | 대상 |
-|---|---|
-| C_diff_genome.fna | C. difficile |
-| S_coel_genome.fna | S. coelicolor |
-
-## 4. 초기 분석 코드 전체
-
-### Step 1. GC 함량 및 6-frame 종결 거리 분석
-
-아래는 저장소의 [step1_gc_6frame.py](step1_gc_6frame.py) 원문 전체이다. 코드 다운로드 없이 복사하여 같은 이름으로 저장할 수 있다.
-
-```python
-import csv
-from Bio import SeqIO
-
-STOP_CODONS = {"TAA", "TAG", "TGA"}
-
-def get_gc_and_6frame_stops(fasta_file):
-    total_gc, total_len = 0, 0
-    stop_dists = []
-
-    for record in SeqIO.parse(fasta_file, "fasta"):
-        seq = record.seq.upper()
-        s_str = str(seq)
-        total_gc += s_str.count('G') + s_str.count('C')
-        total_len += len(s_str)
-
-        for strand in [seq, seq.reverse_complement()]:
-            st = str(strand)
-            for frame in range(3):
-                count = 0
-                for i in range(frame, len(st) - 2, 3):
-                    codon = st[i:i+3]
-                    if set(codon) - {'A', 'T', 'G', 'C'}:
-                        count = 0
-                        continue
-                    count += 1
-                    if codon in STOP_CODONS:
-                        stop_dists.append(count)
-                        count = 0
-
-    gc_pct = round((total_gc / total_len) * 100, 2)
-    mean_dist = round(sum(stop_dists) / len(stop_dists), 2)
-    return total_len, gc_pct, mean_dist
-
-c_len, c_gc, c_dist = get_gc_and_6frame_stops("C_diff_genome.fna")
-s_len, s_gc, s_dist = get_gc_and_6frame_stops("S_coel_genome.fna")
-
-rows = [
-    ["Species", "Genome_bp", "GC_%", "Mean_6Frame_Stop_Dist"],
-    ["Clostridioides difficile", c_len, c_gc, c_dist],
-    ["Streptomyces coelicolor", s_len, s_gc, s_dist]
-]
-
-for r in rows:
-    print(f"{r[0]:<26} {str(r[1]):<12} {str(r[2]):<8} {r[3]}")
-
-with open("initial_summary.csv", "w", newline="") as f:
-    csv.writer(f).writerows(rows)
-```
-
-### 계산 원리
-
-- `SeqIO.parse()`: FASTA 레코드를 순서대로 읽는다.
-- `reverse_complement()`: 역상보 서열을 생성한다.
-- `range(3)`: 각 가닥의 세 읽기 틀을 순회한다.
-- `count`: 종결 코돈까지 읽은 코돈 수를 기록한다.
-- `csv.writer()`: 두 균주의 결과를 CSV로 저장한다.
-
-## 5. 실행과 결과 확인
-
-### 작은 입력으로 먼저 검증하기
-
-실제 유전체를 준비하기 전에 저장소의 [합성 FASTA 실습 자료](examples/README.md)를 사용한다. 초기 코드의 입력 파일명과 호환되도록 구성했으며, 실제 세균의 결과가 아니다.
-
-```bash
-python -m pip install -r requirements.txt
-cd examples
-python ../step1_gc_6frame.py
-cat initial_summary.csv
-```
-
-[예상 결과 CSV](examples/expected_summary.csv)와 비교한다. 자세한 검증 명령은 실습 자료 설명서에 있다. 이후 최상위 폴더로 돌아온다.
-
-```bash
-cd ..
-```
-
-### 실제 초기 유전체 분석
-
-```bash
-python step1_gc_6frame.py
-cat initial_summary.csv
-```
-
-기존 결과를 보존하려면 실행 전에 별도 복사본을 만들어 두어야 한다. 위 코드는 같은 이름의 CSV를 덮어쓴다.
-
-기존 [initial_summary.csv](initial_summary.csv) 원문:
-
-```csv
-Species,Genome_bp,GC_%,Mean_6Frame_Stop_Dist
-Clostridioides difficile,4298133,29.06,13.57
-Streptomyces coelicolor,9054847,72.0,84.25
-```
-
-| Species | Genome (bp) | GC (%) | Mean 6-frame stop distance |
-|---|---:|---:|---:|
-| C. difficile | 4,298,133 | 29.06 | 13.57 |
-| S. coelicolor | 9,054,847 | 72.00 | 84.25 |
-
-기존 공개 수치이며 이번에 다시 실행한 결과가 아니다.
-
-## 6. 9종 확장 분석
-
-### 연구 대상 선정
-
-| Species | RefSeq accession (선정 목록) | 생활 방식 분류 |
-|---|---|---|
-| S. coelicolor | [NC_003888.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_003888.3) | 자유생활 중심 |
-| P. aeruginosa | [NC_002516.2](https://www.ncbi.nlm.nih.gov/nuccore/NC_002516.2) | 자유생활 중심 |
-| C. crescentus | [NC_002696.2](https://www.ncbi.nlm.nih.gov/nuccore/NC_002696.2) | 자유생활 중심 |
-| E. coli | [NC_000913.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_000913.3) | 숙주 연관 |
-| C. difficile | [NC_009089.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_009089.1) | 숙주 연관 |
-| M. tuberculosis | [NC_000962.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_000962.3) | 숙주 연관 |
-| M. leprae | [NC_002677.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_002677.1) | 절대 세포내 생활 |
-| R. prowazekii | [NC_000963.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_000963.1) | 절대 세포내 생활 |
-| B. aphidicola | [NC_002528.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_002528.1) | 절대 세포내 생활 |
-
-선정 목록은 실제 입력 파일 일치 여부를 확인한 이후 확정한다.
-
-### 확장 연구 흐름
+GC 함량과 6-frame 종결 코돈 간격의 관계를 탐색하고, 염기 조성을 보존한 셔플 대조군, CDS·비CDS 영역, 실제 CDS 길이, 코딩 밀도와 읽기 틀 이동을 비교한다.
 
 ```mermaid
 flowchart TD
-    A[NCBI 유전체 9종] --> B[서열 및 주석 읽기]
-    B --> C[GC 및 6-frame 분석]
-    B --> D[코딩 영역 분석]
-    C --> E[셔플 대조군 비교]
-    D --> F[CDS 길이 및 코딩 밀도]
-    D --> G[CDS와 비CDS 비교]
-    E --> H[균주별 비교]
-    F --> H
-    G --> H
-    H --> I[CSV 및 그래프]
-    I --> J[실행 및 재현성 검증]
+    A[NCBI GenBank 9종] --> B[GC 및 6-frame 분석]
+    A --> C[CDS 주석 분석]
+    B --> D[셔플 대조군]
+    C --> E[영역 비교 및 프레임 이동]
+    C --> F[CDS 길이와 코딩 밀도]
+    D --> G[균주 비교]
+    E --> G
+    F --> G
+    G --> H[CSV 및 그림 8종]
+    H --> I[검증]
 ```
 
-### 최종 실제 코드 원문 공개 상태
+## 데이터 준비
 
-| 파일명 | 내용 | 상태 |
+[9종 메타데이터](strains.csv) · [입력 파일 안내](data/README.md)
+
+| Species | RefSeq accession |
+|---|---|
+| S_coelicolor | [NC_003888.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_003888.3) |
+| P_aeruginosa | [NC_002516.2](https://www.ncbi.nlm.nih.gov/nuccore/NC_002516.2) |
+| C_crescentus | [NC_002696.2](https://www.ncbi.nlm.nih.gov/nuccore/NC_002696.2) |
+| E_coli | [NC_000913.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_000913.3) |
+| C_difficile | [NC_009089.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_009089.1) |
+| M_tuberculosis | [NC_000962.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_000962.3) |
+| M_leprae | [NC_002677.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_002677.1) |
+| R_prowazekii | [NC_000963.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_000963.1) |
+| B_aphidicola | [NC_002528.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_002528.1) |
+
+각 accession의 실제 GenBank를 `data/NC_*.gb`에 저장한다. FASTA는 별도 시연용이다. 원본 18개는 아직 웹 업로드가 필요하다. 기존 초기 2종 압축 파일과 혼동하지 않는다.
+
+## 처음부터 끝까지 실행
+
+Linux, WSL 등 Bash 환경에서 저장소를 내려받거나 전체 코드 튜토리얼의 코드를 파일별로 작성한다.
+
+```bash
+git clone https://github.com/elin9785-afk/yujikang.git
+cd yujikang
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-verified.txt
+```
+
+검증 환경: Python 3.13.5, Biopython 1.86, Matplotlib 3.10.8.
+
+### 1. 단위 검사와 작은 예제
+
+```bash
+python test_all.py
+python demo.py
+bash run_all.sh demo_strains.csv demo_data demo_results 3
+bash run_all.sh demo_strains.csv demo_data demo_repeat 3
+diff -r demo_results demo_repeat && echo 'Reproducibility PASS'
+```
+
+### 2. 실제 9종 분석
+
+원본 파일이 모두 준비되면 실행한다. 원본 체크섬 파일도 함께 업로드한 경우 먼저 검사한다.
+
+```bash
+sha256sum -c data/input_sha256.txt
+bash run_all.sh strains.csv data reproduced_results 3
+```
+
+셔플 3회, 난수 seed 42. 새로운 출력 폴더를 사용한다.
+
+### 3. 새로운 서열 분석
+
+```bash
+python analyze.py --fasta-only data/NC_009089.1.fasta --out live
+head -n 7 live/fasta_frames.csv
+```
+
+다른 DNA FASTA도 입력할 수 있다. FASTA-only는 GC 및 6-frame 분석만 제공한다. 주석 기반 분석은 GenBank와 메타데이터를 사용한다.
+
+```bash
+cat > custom_strains.csv <<'CSV'
+strain,file,accession,lifestyle,table
+new_bacteria,new_bacteria.gb,,Unknown,11
+CSV
+bash run_all.sh custom_strains.csv data custom_results 3
+```
+
+한 GenBank에 여러 레코드가 있으면 accession을 명시한다.
+
+## 전체 코드
+
+**[전체 소스 원문 실습 튜토리얼 (Step 01–10)](docs/full_code_tutorial.md)** — 각 파일의 실제 검증 버전 전체를 생략 없이 공개한다.
+
+| 순서 | 파일 | 역할 |
 |---|---|---|
-| analyze_input.py | 입력 및 분석 | 서버 화면에서 파일 존재 확인, 원문 미확보 |
-| compare.py | 비교 분석 | 서버 화면에서 파일 존재 확인, 원문 미확보 |
-| plot.py | 시각화 | 서버 화면에서 파일 존재 확인, 원문 미확보 |
-| run_all.sh | 자동 실행 | 서버 화면에서 파일 존재 확인, 원문 미확보 |
+| 01 | [requirements.txt](requirements.txt) | 라이브러리 설정 |
+| 02 | [strains.csv](strains.csv) | 9종 메타데이터 |
+| 03 | [dna_tools.py](dna_tools.py) | GC·6-frame·셔플·CDS 계산 함수 |
+| 04 | [analyze.py](analyze.py) | GenBank 및 FASTA 입력과 분석 |
+| 05 | [compare.py](compare.py) | 균주 비교 및 순위상관 |
+| 06 | [plot.py](plot.py) | 그래프 생성 |
+| 07 | [test_all.py](test_all.py) | 29개 검사 |
+| 08 | [demo.py](demo.py) | 합성 유전체 생성 |
+| 09 | [check_output.py](check_output.py) | 출력 검증 |
+| 10 | [run_all.sh](run_all.sh) | 전체 분석 실행 |
 
-최종 소스 확보 후 각 파일의 전체 코드를 Step별 코드 블록으로 공개하고 실행 명령, 출력 예제 및 결과를 연결한다. 초기 코드와 다른 버전을 실제 사용한 코드로 대체하여 기록하지 않는다.
+## 실제 분석 결과
 
-## 7. 재현성 및 해석의 한계
+[9종 요약 CSV](results/strain_summary.csv) · [상관분석](results/correlations.csv) · [영역 분석](results/regions.csv) · [프레임 이동](results/shifts.csv) · [실제 실행 로그](verification/real_run.txt) · [FASTA 시연](verification/fasta_frames.csv)
 
-초기 코드의 평균 종결 거리는 현재 종결 코돈을 포함하며 프레임 시작 또는 모호한 염기 이후 첫 종결까지의 구간도 포함한다. 두 종결 코돈 사이의 내부 코돈 수와는 다르다. GC 함량 분모에는 전체 서열 길이가 사용된다. 초기 결과는 두 종의 비교이며 인과관계를 입증하지 않는다.
+| Species | GC (%) | 평균 종결 간격 (codons) |
+|---|---:|---:|
+| S_coelicolor | 72.12 | 84.18 |
+| P_aeruginosa | 66.56 | 61.82 |
+| C_crescentus | 67.21 | 53.82 |
+| E_coli | 50.79 | 24.83 |
+| C_difficile | 29.06 | 12.57 |
+| M_tuberculosis | 65.61 | 52.28 |
+| M_leprae | 57.80 | 31.70 |
+| R_prowazekii | 29.00 | 11.60 |
+| B_aphidicola | 26.31 | 12.22 |
 
-최종 9종 분석의 코드 원문, 데이터, 실행 환경 및 실제 재현성 기록은 아직 이 저장소에서 확인되지 않았다.
+GC 함량과 평균 종결 간격의 Spearman ρ = 0.9667 (n=9). 탐색적 상관관계이다.
 
-## 8. LLM 활용 학습 기록
+전체 출력은 frames.csv, genes.csv, regions.csv, shifts.csv, shuffle.csv, correlations.csv, lifestyle.csv, strain_summary.csv, run_info.json, figures/ (8종)이며, 아직 공개되지 않은 원본 출력 파일은 웹 업로드로 추가한다.
 
-[LLM 활용 학습 및 코드 개발 기록](docs/LLM_learning_log.md)에 프로젝트에서 실제로 요청한 질문의 요약, 코드 개념과 개선 방향, 검증 상태를 정리하였다. 본인의 실제 오류 해결 과정, 실행 근거, 학습 성찰은 학생이 확인하여 추가한다. AI가 제안한 내용과 학생이 직접 실행·확인한 내용을 구분한다.
+## 검증 및 한계
 
-## 9. 참고자료
+- 29개 검사 통과, 실제 9종 1회 분석 및 8개 그림 생성 검사 통과.
+- 동일 조건 합성 데이터 재실행 결과 일치.
+- 실제 9종 재실행 비교, 학교 서버 소스 일치 여부 및 GitHub에서 내려받은 코드 검증은 미완료.
+- 6-frame 간격은 두 종결 사이 내부 코돈 수이며 초기 두 종 코드 정의와 다르다.
+- CDS 점유율은 비-pseudo CDS 좌표 합집합이며 비CDS는 비기능 DNA와 동일하지 않다.
+- 셔플은 단일 염기 조성을 보존하지만 코돈 사용·이염기 조성은 보존하지 않는다.
+- 9종은 대표 표본이며 계통 보정 및 유의성 검정 없이 기술적으로 비교한다.
 
-- [NCBI Nucleotide](https://www.ncbi.nlm.nih.gov/nuccore/)
-- [Biopython Tutorial](https://biopython.org/docs/latest/Tutorial/)
-- [NCBI Genetic Codes](https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi)
-- [JunKimLabTutorial](https://github.com/JunKimCNU/JunKimLabTutorial) — 튜토리얼 구성 참고
+[상세 계산 정의와 원본 기술 문서](docs/verified_source_readme.md)
+
+## 학습 및 참고자료
+
+[LLM 활용 학습 기록](docs/LLM_learning_log.md) · [초기 분석 기록](docs/initial_analysis.md) · [NCBI](https://www.ncbi.nlm.nih.gov/nuccore/) · [Biopython](https://biopython.org/docs/latest/Tutorial/) · [Matplotlib](https://matplotlib.org/stable/) · [JunKimLabTutorial](https://github.com/JunKimCNU/JunKimLabTutorial) (구성 참고)

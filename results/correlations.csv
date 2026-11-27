@@ -1,0 +1,5 @@
+x,y,n,rho
+gc_percent,mean_gap,9,0.9666666666666667
+gc_percent,stop_rate,9,-0.9666666666666667
+mean_gap,mean_aa_length,9,0.36666666666666664
+genome_bp,coding_density,9,0.4

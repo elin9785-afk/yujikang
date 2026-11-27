@@ -1,0 +1,10 @@
+strain,file,accession,lifestyle,table
+S_coelicolor,NC_003888.3.gb,NC_003888.3,Free_living,11
+P_aeruginosa,NC_002516.2.gb,NC_002516.2,Free_living,11
+C_crescentus,NC_002696.2.gb,NC_002696.2,Free_living,11
+E_coli,NC_000913.3.gb,NC_000913.3,Host_associated,11
+C_difficile,NC_009089.1.gb,NC_009089.1,Host_associated,11
+M_tuberculosis,NC_000962.3.gb,NC_000962.3,Host_associated,11
+M_leprae,NC_002677.1.gb,NC_002677.1,Obligate_intracellular,11
+R_prowazekii,NC_000963.1.gb,NC_000963.1,Obligate_intracellular,11
+B_aphidicola,NC_002528.1.gb,NC_002528.1,Obligate_intracellular,11

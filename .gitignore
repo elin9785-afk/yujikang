@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+demo_data/
+demo_strains.csv
+demo_results/
+demo_repeat/
+pilot_results/
+live/
+custom_results/
+results_*/

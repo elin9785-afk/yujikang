@@ -1,0 +1,41 @@
+PASS: GC excludes N
+PASS: GC no valid base
+PASS: two stops one codon between
+PASS: adjacent stops gap zero
+PASS: no complete interval
+PASS: ambiguous codon breaks gap
+PASS: offset 1
+PASS: table 4 TGA not stop
+PASS: six frames
+PASS: reverse strand stop
+PASS: shuffle counts
+PASS: ambiguous positions
+PASS: shuffle deterministic
+PASS: merge overlap
+PASS: complement
+PASS: normal CDS
+PASS: alternative start
+PASS: internal stop
+PASS: bad length
+PASS: missing terminal stop
+PASS: ambiguous CDS
+PASS: positive rank correlation
+PASS: negative rank correlation
+PASS: rank ties
+PASS: constant rank undefined
+PASS: region boundaries
+PASS: reverse CDS
+PASS: annotated pseudo excluded
+PASS: normal reading frame internal stops
+29 checks passed
+Analyzing: S_coelicolor
+Analyzing: P_aeruginosa
+Analyzing: C_crescentus
+Analyzing: E_coli
+Analyzing: C_difficile
+Analyzing: M_tuberculosis
+Analyzing: M_leprae
+Analyzing: R_prowazekii
+Analyzing: B_aphidicola
+PASS: metadata order, CSV relationships, 8 figures
+Pipeline completed: /mnt/data/gc_real_verified
