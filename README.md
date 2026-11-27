@@ -6,6 +6,8 @@
 
 `Python` · `Biopython` · `Matplotlib` · `NCBI RefSeq`
 
+[분석 결과](results/) · [실행 방법](#7-실행과-재현성-확인) · [검증 기록](verification/reproduce_check.txt)
+
 ## 목차
 
 - [1. 연구 배경과 목적](#1-연구-배경과-목적)
@@ -17,6 +19,16 @@
 - [7. 실행과 재현성 확인](#7-실행과-재현성-확인)
 - [8. 실제 분석 결과](#8-실제-분석-결과)
 - [9. 분석의 한계 및 참고자료](#9-분석의-한계-및-참고자료)
+
+## 파일 구성
+
+| 위치 | 내용 |
+|---|---|
+| 최상위 Python·Bash 파일 | 최종 분석, 시각화, 테스트 및 자동 실행 |
+| [initial/](initial/) | 초기 2종 분석 코드와 기존 결과 |
+| [data/](data/) | 실제 1종 실습 데이터, 전체 원본 체크섬 |
+| [results/](results/) | 최종 9종 분석 CSV 및 실행 설정 |
+| [verification/](verification/) | 실행 환경, 소스 체크섬, 검증 로그 |
 
 ## 1. 연구 배경과 목적
 
@@ -61,7 +73,9 @@ flowchart TD
 ### 검증과 재현성
 
 LLM에 다른 서열에서도 작동하는 방법, 예외 처리, 단위 검사와 자동 실행을 요청했다.
-코드가 생성되었다는 사실만으로 실행 성공을 판단할 수 없으므로 입력 파일, 난수 seed, 패키지 버전 및 출력 결과를 함께 기록하는 방식으로 구성했다. 
+코드가 생성되었다는 사실만으로 실행 성공을 판단할 수 없으므로 입력 파일, 난수 seed, 패키지 버전 및 출력 결과를 함께 기록하는 방식으로 구성했다.
+
+LLM(ChatGPT)은 분석 설계, 코드 작성·수정, 문서 정리 및 별도 실행 환경에서의 검증을 보조하는 데 활용했다.
 
 ## 3. 분석 대상과 원본 데이터
 
@@ -93,7 +107,7 @@ GenBank 9개와 FASTA 9개는 실제 제공 원본이며 서로 서열 및 acces
 | NCBI RefSeq 링크 및 EFetch | 나머지 유전체 확보 시도 |
 | 원본 압축 파일 3개 (`originals_01.zip`, `originals_02.zip`, `originals_03.zip`) | 실제 분석에 사용한 원본을 바이트 단위로 복원 |
 
-원본 압축 묶음은 실제 제공 원본으로 만들고 모바엑스턴에서 검증하였다.
+원본 압축 묶음은 실제 분석에 사용한 원본으로 구성하였다. 현재 저장소에는 압축 묶음 3개가 포함되어 있지 않다.
 
 
 ## 4. 실행 환경과 데이터 준비
@@ -111,18 +125,19 @@ python -m pip install -r requirements-verified.txt
 ### 원본 데이터 준비
 
 GenBank는 `data/NC_*.gb`, FASTA는 `data/NC_*.fasta`에 저장한다.
- 원본 압축 묶음를 확보했다면 `data/`에 넣은 뒤 다음을 실행한다.
+원본 압축 묶음 3개를 확보했다면 `data/`에 넣은 뒤 다음을 실행한다.
 
 ```bash
 python download_data.py
 sha256sum -c data/input_sha256.txt
 ```
 
+압축본 없이 NCBI에서 원본을 확보하려는 경우 `python download_data.py --ncbi`를 사용할 수 있다. 기존 원본과 체크섬이 일치할 때만 저장하며, 온라인 재다운로드는 아직 검증하지 않았다. 불일치 시 실제 사용 원본이 필요하다.
 
 ## 5. 초기 2종 분석 코드
 
 초기 연구에서는 저GC와 고GC 유전체의 GC 함량 및 여섯 읽기 틀의 종결 거리 지표를 비교했다. 
-아래는 기존 [step1_gc_6frame.py](step1_gc_6frame.py) 코드이다.
+아래는 기존 [step1_gc_6frame.py](initial/step1_gc_6frame.py) 코드이다.
 
 
 ```python
@@ -175,7 +190,7 @@ with open("initial_summary.csv", "w", newline="") as f:
     csv.writer(f).writerows(rows)
 ```
 
-초기 결과(기존 저장 기록):
+초기 결과([기존 CSV](initial/initial_summary.csv)):
 
 ```csv
 Species,Genome_bp,GC_%,Mean_6Frame_Stop_Dist
@@ -903,138 +918,88 @@ python check_output.py "$META" "$OUT" "$REPS"
 echo "Pipeline completed: $OUT"
 ```
 
-## 7. 실행과 재현성 확인
+### Step 12. 원본 데이터 준비 — download_data.py
 
-### 작은 예제로 검증
+[download_data.py](download_data.py)
 
-실제 검증에 사용된 소스가 변경되지 않았는지 확인한다.
+```python
+"""Restore exact original inputs from ZIP archives or NCBI EFetch."""
+import hashlib
+from pathlib import Path
+from time import sleep
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+from zipfile import ZipFile
+import argparse
 
-```bash
-sha256sum -c verification/source_sha256.txt
+
+def digest(payload):
+    return hashlib.sha256(payload).hexdigest()
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--ncbi', action='store_true', help='Try NCBI for missing files')
+    args = p.parse_args()
+    data = Path('data')
+    manifest = data / 'input_sha256.txt'
+    missing = []
+    archives = sorted(data.glob('originals_*.zip'))
+    for line in manifest.read_text().splitlines():
+        expected, name = line.split(maxsplit=1)
+        target = Path(name)
+        if target.exists():
+            if digest(target.read_bytes()) != expected:
+                raise SystemExit(f'Checksum mismatch (not overwritten): {target}')
+            print('OK:', target)
+            continue
+        payload = None
+        for archive in archives:
+            with ZipFile(archive) as z:
+                if name in z.namelist():
+                    payload = z.read(name)
+                    if digest(payload) != expected:
+                        raise SystemExit(f'Invalid original in {archive}: {name}')
+                    break
+        if payload is None and args.ncbi:
+            accession = target.stem
+            rettypes = ['gbwithparts', 'gb'] if target.suffix == '.gb' else ['fasta']
+            for rettype in rettypes:
+                query = urlencode({'db': 'nuccore', 'id': accession,
+                                   'rettype': rettype, 'retmode': 'text',
+                                   'tool': 'gc_stop_tutorial'})
+                url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?' + query
+                try:
+                    with urlopen(Request(url, headers={'User-Agent': 'GC-stop-tutorial/1.0'}), timeout=180) as response:
+                        candidate = response.read()
+                except OSError as exc:
+                    print(f'NCBI request failed for {name}: {exc}')
+                    continue
+                finally:
+                    sleep(0.5)
+                if digest(candidate) == expected:
+                    payload = candidate
+                    break
+        if payload is None:
+            missing.append(name)
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(payload)
+        print('Restored and verified:', target)
+    if missing:
+        print('Missing or not byte-identical to original:')
+        print('\n'.join(missing))
+        raise SystemExit('Obtain the original files or originals_*.zip archives. No mismatched data saved.')
+    print('PASS: all original input checksums match')
+
+
+if __name__ == '__main__':
+    main()
 ```
 
-```bash
-python test_all.py
-python demo.py
-bash run_all.sh demo_strains.csv demo_data demo_results 3
-bash run_all.sh demo_strains.csv demo_data demo_repeat 3
-diff -r demo_results demo_repeat && echo 'Reproducibility PASS'
-```
+### Step 13. 재현성 확인 — verify_reproducibility.py
 
-### 실제 유전체 1종부터 실습하기
-
-저장소에 포함된 실제 [B. aphidicola GenBank](data/NC_002528.1.gb) 및 [FASTA](data/NC_002528.1.fasta)를 이용한다. 
-다음 명령은 9종 전체가 없어도 실행할 수 있다.
-
-```bash
-python analyze.py --fasta-only data/NC_002528.1.fasta --out live
-head -n 7 live/fasta_frames.csv
-```
-
-```bash
-head -n 1 strains.csv > custom_strains.csv
-grep '^B_aphidicola,' strains.csv >> custom_strains.csv
-bash run_all.sh custom_strains.csv data custom_results 3
-```
-
-이 실습은 실제 한 종을 분석하므로 종 간 상관계수는 정의되지 않는다. 9종 분석을 대신하지 않는다.
-
-### 실제 유전체 9종
-
-4절에 따라 원본 데이터를 준비한 후, 18개 파일의 체크섬이 모두 일치할 때 실행한다.
-
-```bash
-sha256sum -c data/input_sha256.txt
-bash run_all.sh strains.csv data reproduced_results 3
-```
-
-난수 seed 42, 셔플 3회. 동일 환경에서 다시 실행하려면 별도의 출력 폴더를 지정한다.
-
-```bash
-bash run_all.sh strains.csv data reproduced_repeat 3
-diff -r reproduced_results reproduced_repeat
-```
-
-같은 환경에서는 CSV와 그림을 비교할 수 있다. 환경이 다를 경우 PNG 바이트 차이가 생길 수 있다. 원래 결과의 `run_info.json`에 입력 해시, 번역표, seed, 반복 수를 기록한다.
-
-### 다른 서열로 실습
-
-```bash
-python analyze.py --fasta-only data/NC_009089.1.fasta --out live
-head -n 7 live/fasta_frames.csv
-```
-
-FASTA만 있을 때는 GC 및 6-frame 지표를 계산한다. 주석 분석은 GenBank가 필요하다.
-
-```bash
-cat > custom_strains.csv <<'CSV'
-strain,file,accession,lifestyle,table
-new_bacteria,new_bacteria.gb,,Unknown,11
-CSV
-bash run_all.sh custom_strains.csv data custom_results 3
-```
-
-한 GenBank에 여러 레코드가 있으면 accession을 지정한다.
-
-## 8. 실제 분석 결과
-
-실제 제공 원본 9종을 사용한 ChatGPT 실행 환경의 1회 분석 결과이다. [실행 로그](verification/real_run.txt)에는 29개 검사 통과, 9종 분석 및 8개 그림 검사 통과가 기록되어 있다.
-
-| Species | GC (%) | 평균 종결 간격 (codons) | 셔플 평균 간격 | 코딩 밀도 (%) |
-|---|---:|---:|---:|---:|
-| S_coelicolor | 72.12 | 84.18 | 58.70 | 87.20 |
-| P_aeruginosa | 66.56 | 61.82 | 41.98 | 89.19 |
-| C_crescentus | 67.21 | 53.82 | 43.53 | 89.98 |
-| E_coli | 50.79 | 24.83 | 20.90 | 85.75 |
-| C_difficile | 29.06 | 12.57 | 11.32 | 82.48 |
-| M_tuberculosis | 65.61 | 52.28 | 39.89 | 89.47 |
-| M_leprae | 57.80 | 31.70 | 27.51 | 53.17 |
-| R_prowazekii | 29.00 | 11.60 | 11.31 | 73.19 |
-| B_aphidicola | 26.31 | 12.22 | 10.64 | 86.38 |
-
-Spearman ρ = 0.9667 (n=9): GC와 평균 종결 간격의 양의 순위상관이 관찰되었다. 셔플 평균과 관측값은 기술적으로 비교하며 인과관계를 단정하지 않는다.
-
-공개 결과: [균주 요약](results/strain_summary.csv) · [6-frame](results/frames.csv) · [셔플](results/shuffle.csv) · [영역](results/regions.csv) · [프레임 이동](results/shifts.csv) · [상관](results/correlations.csv) · [그룹 비교](results/lifestyle.csv) · [FASTA 시연](verification/fasta_frames.csv).
-
-[CDS별 기록](results/genes.csv) · [실행 설정 및 입력 해시](results/run_info.json)도 공개한다. 원본 그림 8개는 아직 전송되지 않았으며, 모든 결과 CSV가 있으므로 `python plot.py results`로 다시 생성할 수 있다.
-
-## 9. 분석의 한계 및 참고자료
-
-- GC 비율은 유효 A/C/G/T 염기 기준이다. 종결 간격은 같은 읽기 틀의 두 종결 사이 내부 코돈 수이며 두 종결 자체는 제외한다. 모호한 코돈, 불완전 구간과 원형 염색체의 경계 연결은 제외한다.
-- 종결 빈도는 유효 코돈 1,000개당 종결 코돈 수이다. 여섯 읽기 틀 탐색은 유전자 예측이 아니다.
-- 셔플 대조군은 단일 염기 수와 모호한 위치만 보존한다. 코돈 사용 및 이염기 조성은 유지하지 않는다.
-- 코딩 밀도는 비-pseudo CDS 주석 좌표 합집합의 길이를 염색체 길이로 나눈 값이다. 비CDS에는 RNA, 조절 서열 등이 포함될 수 있다. CDS·비CDS 영역별 스캔은 연속 구간별로 수행한다.
-- 정상 CDS를 검증한 후 말단 종결을 제거하고 읽기 틀 이동을 비교한다. 정상 frame의 내부 종결이 0인 것은 검증의 정의에 따른다.
-- 9종 비교는 기술적·탐색적이며 계통 보정이나 유의성 검정을 하지 않았다.
-- 합성 데이터 동일 환경 반복은 일치했지만 실제 9종 반복 실행, GitHub 새 다운로드 검증, 학교 서버 코드와 일치 확인은 아직 완료되지 않았다.
-
-참고: [NCBI Nucleotide](https://www.ncbi.nlm.nih.gov/nuccore/), [NCBI Genetic Codes](https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi), [Biopython](https://biopython.org/docs/latest/Tutorial/), [Matplotlib](https://matplotlib.org/stable/)
-
-## 추가. 실제 재실행 자동 검증
-
-기존 연구 코드와 결과를 변경하지 않고, 새로 계산한 값과 공개된 기준 결과를 비교하는 [verify_reproducibility.py](verify_reproducibility.py)를 추가하였다.
-
-### 공개 데이터로 즉시 검증
-
-4절의 Python 환경 준비 후 저장소 최상위에서 다음 명령어를 실행한다. GitHub에 포함된 실제 B. aphidicola 유전체와 자동 생성 합성 서열만 사용하므로 나머지 8종 데이터를 다운로드할 필요가 없다.
-
-```bash
-python verify_reproducibility.py
-```
-
-이 코드는 원래 분석 소스를 직접 실행하여 소스 체크섬, 실제 입력 체크섬, 29개 검사, 합성 데이터 두 번 실행 결과, 실제 FASTA 6-frame, 실제 GenBank 1종의 CSV 6개를 비교한다. 출력은 임시 폴더에 생성되며 기존 results/를 변경하지 않는다. 불일치 또는 오류가 발생하면 성공으로 처리하지 않는다.
-
-### 9종 전체 검증
-
-현재 GitHub에는 실제 1종만 포함되어 있다. 나머지 8종의 원본 압축 묶음 3개를 data/에 준비하거나 실제 사용한 원본을 확보해야 한다. 파일을 준비한 후 다음 명령어를 실행한다.
-
-```bash
-python verify_reproducibility.py --full
-```
-
-원본 18개 SHA-256, 9종 전체 재분석, 출력 구조 및 그림 생성, 기존 CSV 8개, 입력 해시·seed·반복 수를 비교한다. 기존 9종 결과를 단순히 출력하는 코드가 아니다. 원본이 없거나 비교가 실패하면 0이 아닌 종료 코드로 중단된다. 실행 환경 버전이 다르면 run_info.json의 버전 기록은 달라질 수 있다.
-
-### 추가 검증 코드 전체
+[verify_reproducibility.py](verify_reproducibility.py)
 
 ```python
 """Rerun the published pipeline and check its newly generated results."""
@@ -1168,8 +1133,138 @@ if __name__ == '__main__':
     main()
 ```
 
-검증 환경: Python 3.13.5, Biopython 1.86, Matplotlib 3.10.8. 공개 소스·데이터·결과 파일과 Git blob SHA가 일치하는 새 로컬 폴더에서 실제 실행하였다. 이 검증은 학교 서버에서의 학생 개인 실행 기록과 구분되며, 교수님 PC에서의 환경 설치나 네트워크 다운로드는 별도로 확인해야 한다.
+## 7. 실행과 재현성 확인
 
-### 추가 검증 결과 (2026-11-27)
+### 자동 검증
 
-[실제 실행 기록](verification/reproduce_check.txt): 공개 데이터 1종 및 합성 데이터 검증, 9종 원본을 확보한 별도 로컬 폴더에서의 전체 재실행 모두 종료 코드 0으로 완료되었다. 9종 전체의 CSV 8개와 run_info.json이 기존 결과와 일치하였다. 비교용 수치를 일부러 변경한 별도 검사에서는 실패를 정상적으로 감지하였다. 현재 공개 저장소만으로 가능한 범위는 1종 및 합성 데이터 검증이며, 9종 전체 검증에는 추가 원본 파일이 필요하다. 이 실행은 ChatGPT 검증 환경에서 수행되었다.
+실행 환경 준비 후 저장소 최상위에서 다음 명령을 실행한다.
+
+```bash
+python verify_reproducibility.py
+```
+
+공개된 실제 유전체 1종과 합성 데이터를 새로 분석하여 기존 CSV, 소스 및 입력 체크섬을 비교한다. 기존 results/는 덮어쓰지 않는다.
+
+9종 원본을 준비한 경우:
+
+```bash
+python verify_reproducibility.py --full
+```
+
+### 검증 결과
+
+| 항목 | 결과 |
+|---|---|
+| 단위 및 경계조건 검사 | 29/29 통과 |
+| 합성 데이터 반복 실행 | 출력 17개 일치 |
+| 실제 유전체 1종 | FASTA 6-frame 및 CSV 6개 일치 |
+| 실제 유전체 9종 (별도 원본 준비) | 원본 18개 체크섬, CSV 8개 및 실행 설정 JSON 일치 |
+
+검증 기록: [실행 로그](verification/reproduce_check.txt), [환경](verification/environment.txt). LLM 지원 실행 환경에서 공개 소스와 동일한 파일로 검증한 결과이며, 학교 서버의 개인 실행이나 GitHub 네트워크 복제 검증을 의미하지 않는다.
+
+### 수동 실행
+
+### 작은 예제로 검증
+
+실제 검증에 사용된 소스가 변경되지 않았는지 확인한다.
+
+```bash
+sha256sum -c verification/source_sha256.txt
+```
+
+```bash
+python test_all.py
+python demo.py
+bash run_all.sh demo_strains.csv demo_data demo_results 3
+bash run_all.sh demo_strains.csv demo_data demo_repeat 3
+diff -r demo_results demo_repeat && echo 'Reproducibility PASS'
+```
+
+### 실제 유전체 1종부터 실습하기
+
+저장소에 포함된 실제 [B. aphidicola GenBank](data/NC_002528.1.gb) 및 [FASTA](data/NC_002528.1.fasta)를 이용한다. 
+다음 명령은 9종 전체가 없어도 실행할 수 있다.
+
+```bash
+python analyze.py --fasta-only data/NC_002528.1.fasta --out live
+head -n 7 live/fasta_frames.csv
+```
+
+```bash
+head -n 1 strains.csv > custom_strains.csv
+grep '^B_aphidicola,' strains.csv >> custom_strains.csv
+bash run_all.sh custom_strains.csv data custom_results 3
+```
+
+이 실습은 실제 한 종을 분석하므로 종 간 상관계수는 정의되지 않는다. 9종 분석을 대신하지 않는다.
+
+### 실제 유전체 9종
+
+4절에 따라 원본 데이터를 준비한 후, 18개 파일의 체크섬이 모두 일치할 때 실행한다.
+
+```bash
+sha256sum -c data/input_sha256.txt
+bash run_all.sh strains.csv data reproduced_results 3
+```
+
+난수 seed 42, 셔플 3회. 동일 환경에서 다시 실행하려면 별도의 출력 폴더를 지정한다.
+
+```bash
+bash run_all.sh strains.csv data reproduced_repeat 3
+diff -r reproduced_results reproduced_repeat
+```
+
+같은 환경에서는 CSV와 그림을 비교할 수 있다. 환경이 다를 경우 PNG 바이트 차이가 생길 수 있다. 원래 결과의 `run_info.json`에 입력 해시, 번역표, seed, 반복 수를 기록한다.
+
+### 다른 서열로 실습
+
+```bash
+python analyze.py --fasta-only data/NC_009089.1.fasta --out live
+head -n 7 live/fasta_frames.csv
+```
+
+FASTA만 있을 때는 GC 및 6-frame 지표를 계산한다. 주석 분석은 GenBank가 필요하다.
+
+```bash
+cat > custom_strains.csv <<'CSV'
+strain,file,accession,lifestyle,table
+new_bacteria,new_bacteria.gb,,Unknown,11
+CSV
+bash run_all.sh custom_strains.csv data custom_results 3
+```
+
+한 GenBank에 여러 레코드가 있으면 accession을 지정한다.
+
+## 8. 실제 분석 결과
+
+실제 유전체 9종의 분석 결과이다. [전체 결과 파일](results/)과 [실행 로그](verification/real_run.txt)를 함께 제공한다.
+
+| Species | GC (%) | 평균 종결 간격 (codons) | 셔플 평균 간격 | 코딩 밀도 (%) |
+|---|---:|---:|---:|---:|
+| S_coelicolor | 72.12 | 84.18 | 58.70 | 87.20 |
+| P_aeruginosa | 66.56 | 61.82 | 41.98 | 89.19 |
+| C_crescentus | 67.21 | 53.82 | 43.53 | 89.98 |
+| E_coli | 50.79 | 24.83 | 20.90 | 85.75 |
+| C_difficile | 29.06 | 12.57 | 11.32 | 82.48 |
+| M_tuberculosis | 65.61 | 52.28 | 39.89 | 89.47 |
+| M_leprae | 57.80 | 31.70 | 27.51 | 53.17 |
+| R_prowazekii | 29.00 | 11.60 | 11.31 | 73.19 |
+| B_aphidicola | 26.31 | 12.22 | 10.64 | 86.38 |
+
+Spearman ρ = 0.9667 (n=9): GC와 평균 종결 간격의 양의 순위상관이 관찰되었다. 셔플 평균과 관측값은 기술적으로 비교하며 인과관계를 단정하지 않는다.
+
+공개 결과: [균주 요약](results/strain_summary.csv) · [6-frame](results/frames.csv) · [셔플](results/shuffle.csv) · [영역](results/regions.csv) · [프레임 이동](results/shifts.csv) · [상관](results/correlations.csv) · [그룹 비교](results/lifestyle.csv) · [FASTA 시연](verification/fasta_frames.csv).
+
+[CDS별 기록](results/genes.csv) · [실행 설정 및 입력 해시](results/run_info.json)도 공개한다. 원본 그림 8개는 아직 전송되지 않았으며, 모든 결과 CSV가 있으므로 `python plot.py results`로 다시 생성할 수 있다.
+
+## 9. 분석의 한계 및 참고자료
+
+- GC 비율은 유효 A/C/G/T 염기 기준이다. 종결 간격은 같은 읽기 틀의 두 종결 사이 내부 코돈 수이며 두 종결 자체는 제외한다. 모호한 코돈, 불완전 구간과 원형 염색체의 경계 연결은 제외한다.
+- 종결 빈도는 유효 코돈 1,000개당 종결 코돈 수이다. 여섯 읽기 틀 탐색은 유전자 예측이 아니다.
+- 셔플 대조군은 단일 염기 수와 모호한 위치만 보존한다. 코돈 사용 및 이염기 조성은 유지하지 않는다.
+- 코딩 밀도는 비-pseudo CDS 주석 좌표 합집합의 길이를 염색체 길이로 나눈 값이다. 비CDS에는 RNA, 조절 서열 등이 포함될 수 있다. CDS·비CDS 영역별 스캔은 연속 구간별로 수행한다.
+- 정상 CDS를 검증한 후 말단 종결을 제거하고 읽기 틀 이동을 비교한다. 정상 frame의 내부 종결이 0인 것은 검증의 정의에 따른다.
+- 9종 비교는 기술적·탐색적이며 계통 보정이나 유의성 검정을 하지 않았다.
+- 합성 데이터 및 실제 9종의 동일 환경 재실행 결과는 일치하였다. GitHub 네트워크 복제, 학교 서버 소스 동일성 및 다른 실행 환경은 별도 확인이 필요하다.
+
+참고: [NCBI Nucleotide](https://www.ncbi.nlm.nih.gov/nuccore/), [NCBI Genetic Codes](https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi), [Biopython](https://biopython.org/docs/latest/Tutorial/), [Matplotlib](https://matplotlib.org/stable/)
