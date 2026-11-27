@@ -1,18 +1,23 @@
-# 입력 데이터 안내
+# 실제 9종 입력 데이터
 
-## 현재 공개 자료
+학생이 첨부한 GenBank 9개 및 FASTA 9개의 accession과 염기서열 일치 여부를 확인하였다. [메타데이터](../strains.csv)와 [원본 파일 SHA-256](input_sha256.txt)을 제공한다. 원본 18개는 아직 웹 업로드가 필요하며, 업로드 시 이 폴더에 배치한다. GenBank 9개는 전체 분석에 필요하며 FASTA는 별도 시연용이다.
 
-초기 두 종의 NCBI 데이터 압축 파일은 저장소 최상위에 있다. [저GC 데이터](../ncbi_dataset.zip%20%EC%A0%80gc), [고GC 데이터](../ncbi_dataset.zip%20%EA%B3%A0%20gc). 압축 내부 및 정확한 accession은 추가 확인이 필요하다.
+| accession | GenBank | FASTA |
+|---|---|---|
+| [NC_003888.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_003888.3) | NC_003888.3.gb | NC_003888.3.fasta |
+| [NC_002516.2](https://www.ncbi.nlm.nih.gov/nuccore/NC_002516.2) | NC_002516.2.gb | NC_002516.2.fasta |
+| [NC_002696.2](https://www.ncbi.nlm.nih.gov/nuccore/NC_002696.2) | NC_002696.2.gb | NC_002696.2.fasta |
+| [NC_000913.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_000913.3) | NC_000913.3.gb | NC_000913.3.fasta |
+| [NC_009089.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_009089.1) | NC_009089.1.gb | NC_009089.1.fasta |
+| [NC_000962.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_000962.3) | NC_000962.3.gb | NC_000962.3.fasta |
+| [NC_002677.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_002677.1) | NC_002677.1.gb | NC_002677.1.fasta |
+| [NC_000963.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_000963.1) | NC_000963.1.gb | NC_000963.1.fasta |
+| [NC_002528.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_002528.1) | NC_002528.1.gb | NC_002528.1.fasta |
 
-[합성 FASTA 실습 자료](../examples/)는 별도이며 실제 유전체가 아니다.
+원본 확보 후 저장소 최상위에서 다음 명령어로 검증한다.
 
-## 9종 확장 분석 제출 자료
+```bash
+sha256sum -c data/input_sha256.txt
+```
 
-실제 서버에서 사용한 GenBank 원본 파일과 필요한 FASTA 파일을 업로드한 후 아래 정보를 기록한다.
-
-- 실제 accession.version 및 균주명
-- 다운로드 출처와 날짜
-- 파일명과 SHA-256 해시
-- 실제 코드에서 요구하는 경로 및 파일 형식
-
-NCBI accession만으로는 이후 변경된 주석까지 동일하다고 보장할 수 없다. 실제 사용 원본을 함께 제공하거나 동일 파일을 확보하는 방법과 체크섬을 기록한다. 이 폴더에는 현재 9종 원본이 아직 포함되어 있지 않다.
+NCBI에서 다시 내려받는 자료는 주석 변경으로 기존 파일과 체크섬이 달라질 수 있다.
