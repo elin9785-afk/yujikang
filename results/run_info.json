@@ -1,0 +1,71 @@
+{
+  "seed": 42,
+  "reps": 3,
+  "python": "3.13.5",
+  "biopython": "1.86",
+  "inputs": [
+    {
+      "strain": "S_coelicolor",
+      "accession": "NC_003888.3",
+      "file": "NC_003888.3.gb",
+      "table": 11,
+      "sha256": "cb31ce9f3a30dcaabd108ab60a83e8040204209dc689c2a325e81f44d8ebe211"
+    },
+    {
+      "strain": "P_aeruginosa",
+      "accession": "NC_002516.2",
+      "file": "NC_002516.2.gb",
+      "table": 11,
+      "sha256": "8b4388ea984a0d7df4850e556aebc17acf77f2982acf2f192088df01befb4a6c"
+    },
+    {
+      "strain": "C_crescentus",
+      "accession": "NC_002696.2",
+      "file": "NC_002696.2.gb",
+      "table": 11,
+      "sha256": "8a3f6eb403406259553a2bf269fb3c24ac5cc251f4287a496457c071bbd08efa"
+    },
+    {
+      "strain": "E_coli",
+      "accession": "NC_000913.3",
+      "file": "NC_000913.3.gb",
+      "table": 11,
+      "sha256": "313752bfe10d4aaf04abdb541a1309bce9a6b66f059e75fe215898e736a5a8a5"
+    },
+    {
+      "strain": "C_difficile",
+      "accession": "NC_009089.1",
+      "file": "NC_009089.1.gb",
+      "table": 11,
+      "sha256": "08d36616555c5a552a8622b53cbb832f3579b676f1f0148cfa29545488405878"
+    },
+    {
+      "strain": "M_tuberculosis",
+      "accession": "NC_000962.3",
+      "file": "NC_000962.3.gb",
+      "table": 11,
+      "sha256": "4d7e13f02002c4799f006e669841171c7125cb82c67ef046ac3396fba4727f67"
+    },
+    {
+      "strain": "M_leprae",
+      "accession": "NC_002677.1",
+      "file": "NC_002677.1.gb",
+      "table": 11,
+      "sha256": "8fab7b630a7dfc2c87c787c693fbef63cf59a479e6f1014b95fa7ad9a7d9928f"
+    },
+    {
+      "strain": "R_prowazekii",
+      "accession": "NC_000963.1",
+      "file": "NC_000963.1.gb",
+      "table": 11,
+      "sha256": "971367967c519e7998eee1467858bd514e8e1d7eac17344c4616ae690250fd69"
+    },
+    {
+      "strain": "B_aphidicola",
+      "accession": "NC_002528.1",
+      "file": "NC_002528.1.gb",
+      "table": 11,
+      "sha256": "91a1e12195be178665dd7278fb56bc30c57d05941dab7de1a06cec98a61a1137"
+    }
+  ]
+}

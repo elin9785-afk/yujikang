@@ -1,0 +1,16 @@
+lifestyle,metric,n,mean
+Free_living,genome_bp,3,6316286.0
+Free_living,gc_percent,3,68.62945842354267
+Free_living,mean_gap,3,66.60794582330142
+Free_living,coding_density,3,88.78771576726653
+Free_living,mean_aa_length,3,326.5689716608109
+Host_associated,genome_bp,3,4447812.0
+Host_associated,gc_percent,3,48.488635619227736
+Host_associated,mean_gap,3,29.893742024889082
+Host_associated,coding_density,3,85.90221286384906
+Host_associated,mean_aa_length,3,318.6079751136717
+Obligate_intracellular,genome_bp,3,1673469.0
+Obligate_intracellular,gc_percent,3,37.703172211130294
+Obligate_intracellular,mean_gap,3,18.506021977115147
+Obligate_intracellular,coding_density,3,70.91467693037099
+Obligate_intracellular,mean_aa_length,3,303.4598080054829
