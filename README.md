@@ -2,7 +2,7 @@
 
 **Comparative Analysis of Stop Codon Distribution in Relation to GC Content and Coding Region Characteristics in Bacterial Genomes**
 
-충남대학교 생명정보융합학과 · 생명정보학 컴퓨팅 기말 프로젝트
+충남대학교 생명정보융합학과 202304441 강유지 
 
 `Python` · `Biopython` · `Matplotlib` · `NCBI RefSeq`
 
@@ -20,7 +20,8 @@
 
 ## 1. 연구 배경과 목적
 
-GC 함량이 다른 두 세균의 종결 코돈 분포를 비교하는 초기 연구에서 출발하여, 9종의 유전체로 분석 대상을 확장했다. GC 함량만으로 종결 코돈 간격의 차이를 설명할 수 있는지, 염기 배열과 코딩 영역의 특성이 어떤 관련성을 보이는지 비교하는 것이 목적이다.
+GC 함량이 다른 두 세균의 종결 코돈 분포를 비교하는 초기 연구에서 출발하여, 9종의 유전체로 분석 대상을 확장했다.
+GC 함량만으로 종결 코돈 간격의 차이를 설명할 수 있는지, 염기 배열과 코딩 영역의 특성이 어떤 관련성을 보이는지 비교하는 것이 목적이다.
 
 ```mermaid
 flowchart TD
@@ -40,7 +41,9 @@ flowchart TD
 
 ## 2. LLM을 활용한 학습 내용
 
-처음에는 GC 함량과 종결 코돈 분포를 비교하는 분석부터 시작했다. 이후 LLM을 활용하여 분석 대상을 9종으로 확장하는 방법과, 입력부터 출력까지 연결하는 파이프라인 구조를 질문했다. 단순한 수치 비교를 넘어서 염기 조성을 보존한 대조군과 실제 CDS 주석을 이용하는 방향을 구체화했다.
+처음에는 GC 함량과 종결 코돈 분포를 비교하는 분석부터 시작했다.
+이후 LLM을 활용하여 분석 대상을 9종으로 확장하는 방법과, 입력부터 출력까지 연결하는 파이프라인 구조를 질문했다. 
+단순한 수치 비교를 넘어서 염기 조성을 보존한 대조군과 실제 CDS 주석을 이용하는 방향을 구체화했다.
 
 ### Python과 Biopython
 
@@ -57,11 +60,12 @@ flowchart TD
 
 ### 검증과 재현성
 
-LLM에 다른 서열에서도 작동하는 방법, 예외 처리, 단위 검사와 전체 자동 실행을 요청했다. 코드가 생성되었다는 사실만으로 실행 성공을 판단할 수 없으므로 입력 파일, 난수 seed, 패키지 버전 및 출력 결과를 함께 기록하는 방식으로 구성했다. 실제 9종 검증은 제공한 원본을 이용한 ChatGPT 실행 환경의 결과이며 학교 서버 실행과 별도로 구분한다.
+LLM에 다른 서열에서도 작동하는 방법, 예외 처리, 단위 검사와 자동 실행을 요청했다.
+코드가 생성되었다는 사실만으로 실행 성공을 판단할 수 없으므로 입력 파일, 난수 seed, 패키지 버전 및 출력 결과를 함께 기록하는 방식으로 구성했다. 
 
 ## 3. 분석 대상과 원본 데이터
 
-[9종 메타데이터](strains.csv) · [입력 데이터 체크섬](data/input_sha256.txt)
+[9종 메타데이터](strains.csv) 
 
 | Species | NCBI RefSeq accession | 분석 그룹 |
 |---|---|---|
@@ -75,9 +79,13 @@ LLM에 다른 서열에서도 작동하는 방법, 예외 처리, 단위 검사�
 | R_prowazekii | [NC_000963.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_000963.1) | Obligate_intracellular |
 | B_aphidicola | [NC_002528.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_002528.1) | Obligate_intracellular |
 
-각 종에서 대표 염색체 하나를 사용한다. 그룹은 비교를 위한 분류 기준이며 인과관계 또는 계통적으로 독립적인 반복을 의미하지 않는다. GenBank 9개와 FASTA 9개는 실제 제공 원본이며 서로 서열 및 accession이 일치하는 것을 확인하였다.
+각 종에서 대표 염색체 하나를 사용한다. 
+그룹은 비교를 위한 분류 기준이며 인과관계 또는 계통적으로 독립적인 반복을 의미하지 않는다. 
+GenBank 9개와 FASTA 9개는 실제 제공 원본이며 서로 서열 및 accession이 일치하는 것을 확인하였다.
 
-대용량 유전체를 압축 해제 상태로 모두 Git에 올리지 않고, 실제 분석에 사용한 accession.version과 [SHA-256 체크섬](data/input_sha256.txt)을 기록한다. 현재 저장소에는 실제 B. aphidicola의 [GenBank](data/NC_002528.1.gb)와 [FASTA](data/NC_002528.1.fasta)가 실습 예제로 포함되어 있다. 나머지 8종은 아래의 원본 압축 묶음 또는 NCBI에서 확보한다.
+대용량 유전체를 압축 해제 상태로 모두 Git에 올리지 않고, 실제 분석에 사용한 accession.version과 [SHA-256 체크섬](data/input_sha256.txt)을 기록한다.
+현재 저장소에는 실제 B. aphidicola의 [GenBank](data/NC_002528.1.gb)와 [FASTA](data/NC_002528.1.fasta)가 실습 예제로 포함되어 있다. 
+나머지 8종은 아래의 원본 압축 묶음 또는 NCBI에서 확보한다.
 
 | 데이터 준비 방법 | 용도 |
 |---|---|
@@ -85,7 +93,8 @@ LLM에 다른 서열에서도 작동하는 방법, 예외 처리, 단위 검사�
 | NCBI RefSeq 링크 및 EFetch | 나머지 유전체 확보 시도 |
 | 원본 압축 파일 3개 (`originals_01.zip`, `originals_02.zip`, `originals_03.zip`) | 실제 분석에 사용한 원본을 바이트 단위로 복원 |
 
-원본 압축 묶음은 실제 제공 원본으로 만들고 18개 전체 체크섬을 검증했으나, 아직 이 저장소에 업로드되지 않은 외부 준비 자료이다. NCBI에서 새로 받은 주석 또는 FASTA 헤더가 달라질 수 있으므로 accession 일치만으로 기존 원본과 동일하다고 판단하지 않는다.
+원본 압축 묶음은 실제 제공 원본으로 만들고 모바엑스턴에서 검증하였다.
+
 
 ## 4. 실행 환경과 데이터 준비
 
@@ -101,101 +110,20 @@ python -m pip install -r requirements-verified.txt
 
 ### 원본 데이터 준비
 
-GenBank는 `data/NC_*.gb`, FASTA는 `data/NC_*.fasta`에 저장한다. 이미 원본을 갖고 있으면 같은 위치에 복사한다. 원본 압축 묶음 3개를 확보했다면 압축을 풀지 않고 `data/`에 넣은 뒤 다음을 실행한다.
+GenBank는 `data/NC_*.gb`, FASTA는 `data/NC_*.fasta`에 저장한다.
+ 원본 압축 묶음를 확보했다면 `data/`에 넣은 뒤 다음을 실행한다.
 
 ```bash
 python download_data.py
 sha256sum -c data/input_sha256.txt
 ```
 
-압축본 없이 NCBI에서 확보하려면 다음과 같이 실행한다.
-
-```bash
-python download_data.py --ncbi
-```
-
-원본 SHA-256이 일치하는 응답만 저장한다. 현재 네트워크 다운로드는 검증되지 않았으므로 일치하지 않으면 실제 원본 또는 압축 묶음을 확보해야 한다. 로컬 원본 압축 복원과 18개 전체 체크섬 일치는 검증 완료하였다. 다음 보조 코드는 원래 분석 코드를 변경하지 않고 원본 확보 과정만 지원한다.
-
-[download_data.py](download_data.py)
-
-```python
-"""Restore exact original inputs from ZIP archives or NCBI EFetch."""
-import hashlib
-from pathlib import Path
-from time import sleep
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
-from zipfile import ZipFile
-import argparse
-
-
-def digest(payload):
-    return hashlib.sha256(payload).hexdigest()
-
-
-def main():
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--ncbi', action='store_true', help='Try NCBI for missing files')
-    args = p.parse_args()
-    data = Path('data')
-    manifest = data / 'input_sha256.txt'
-    missing = []
-    archives = sorted(data.glob('originals_*.zip'))
-    for line in manifest.read_text().splitlines():
-        expected, name = line.split(maxsplit=1)
-        target = Path(name)
-        if target.exists():
-            if digest(target.read_bytes()) != expected:
-                raise SystemExit(f'Checksum mismatch (not overwritten): {target}')
-            print('OK:', target)
-            continue
-        payload = None
-        for archive in archives:
-            with ZipFile(archive) as z:
-                if name in z.namelist():
-                    payload = z.read(name)
-                    if digest(payload) != expected:
-                        raise SystemExit(f'Invalid original in {archive}: {name}')
-                    break
-        if payload is None and args.ncbi:
-            accession = target.stem
-            rettypes = ['gbwithparts', 'gb'] if target.suffix == '.gb' else ['fasta']
-            for rettype in rettypes:
-                query = urlencode({'db': 'nuccore', 'id': accession,
-                                   'rettype': rettype, 'retmode': 'text',
-                                   'tool': 'gc_stop_tutorial'})
-                url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?' + query
-                try:
-                    with urlopen(Request(url, headers={'User-Agent': 'GC-stop-tutorial/1.0'}), timeout=180) as response:
-                        candidate = response.read()
-                except OSError as exc:
-                    print(f'NCBI request failed for {name}: {exc}')
-                    continue
-                finally:
-                    sleep(0.5)
-                if digest(candidate) == expected:
-                    payload = candidate
-                    break
-        if payload is None:
-            missing.append(name)
-            continue
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(payload)
-        print('Restored and verified:', target)
-    if missing:
-        print('Missing or not byte-identical to original:')
-        print('\n'.join(missing))
-        raise SystemExit('Obtain the original files or originals_*.zip archives. No mismatched data saved.')
-    print('PASS: all original input checksums match')
-
-
-if __name__ == '__main__':
-    main()
-```
 
 ## 5. 초기 2종 분석 코드
 
-초기 연구에서는 저GC와 고GC 유전체의 GC 함량 및 여섯 읽기 틀의 종결 거리 지표를 비교했다. 아래는 기존 [step1_gc_6frame.py](step1_gc_6frame.py) 원문이다. 최종 9종 분석은 이 초기 코드 대신 다음 절의 파이프라인을 사용한다.
+초기 연구에서는 저GC와 고GC 유전체의 GC 함량 및 여섯 읽기 틀의 종결 거리 지표를 비교했다. 
+아래는 기존 [step1_gc_6frame.py](step1_gc_6frame.py) 코드이다.
+
 
 ```python
 import csv
@@ -254,12 +182,12 @@ Species,Genome_bp,GC_%,Mean_6Frame_Stop_Dist
 Clostridioides difficile,4298133,29.06,13.57
 Streptomyces coelicolor,9054847,72.0,84.25
 ```
-
-초기 입력 자료와 결과는 [이전 커밋](https://github.com/elin9785-afk/yujikang/tree/04a157d70df2523d608346208b3d288f8c3eb9be)에서 확인할 수 있다. 초기 코드는 종결 코돈을 포함한 거리 및 시작 구간을 포함하고 전체 염기 길이를 GC 분모로 사용하므로 최종 코드의 지표와 직접 동일시하지 않는다.
+초기에 작성했던 코드는 종결 코돈을 포함한 거리 및 시작 구간을 포함하고 전체 염기 길이를 GC 분모로 사용하므로 최종 코드의 지표와 직접 동일시하지 않는다.
 
 ## 6. 최종 9종 분석 전체 코드
 
-다음 코드 블록은 실제 제공 데이터로 실행한 검증 버전의 각 파일 원문 전체이다. 파일을 직접 작성하는 경우 각 블록을 같은 이름으로 저장한다. 소스 파일 링크로 바로 열 수도 있다. 학교 서버의 최종 소스와 완전히 동일한지는 아직 대조하지 못했다.
+다음 코드 블록은 실제 제공 데이터로 실행한 검증 버전의 각 파일 원문 전체이다. 
+파일을 직접 작성하는 경우 각 블록을 같은 이름으로 저장한다.
 
 ### Step 01. 필요 라이브러리 — requirements.txt
 
@@ -995,7 +923,8 @@ diff -r demo_results demo_repeat && echo 'Reproducibility PASS'
 
 ### 실제 유전체 1종부터 실습하기
 
-저장소에 포함된 실제 [B. aphidicola GenBank](data/NC_002528.1.gb) 및 [FASTA](data/NC_002528.1.fasta)를 이용한다. 다음 명령은 9종 전체가 없어도 실행할 수 있다.
+저장소에 포함된 실제 [B. aphidicola GenBank](data/NC_002528.1.gb) 및 [FASTA](data/NC_002528.1.fasta)를 이용한다. 
+다음 명령은 9종 전체가 없어도 실행할 수 있다.
 
 ```bash
 python analyze.py --fasta-only data/NC_002528.1.fasta --out live
