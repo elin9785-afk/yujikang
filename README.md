@@ -77,7 +77,7 @@ LLM에 다른 서열에서도 작동하는 방법, 예외 처리, 단위 검사�
 
 각 종에서 대표 염색체 하나를 사용한다. 그룹은 비교를 위한 분류 기준이며 인과관계 또는 계통적으로 독립적인 반복을 의미하지 않는다. GenBank 9개와 FASTA 9개는 실제 제공 원본이며 서로 서열 및 accession이 일치하는 것을 확인하였다.
 
-**현재 원본 18개는 저장소에 아직 전송되지 않았다.** 아래 원본 체크섬과 NCBI 링크를 이용하여 확보하고 검증할 수 있다. NCBI에서 내려받은 주석이나 파일 형식이 달라져 체크섬이 불일치할 수 있으므로 해당 경우에는 실제 사용 원본을 확보해야 한다.
+**현재 B. aphidicola의 원본 GenBank와 FASTA 2개를 공개했다.** 나머지 8종의 GenBank·FASTA 원본은 추가 전송이 필요하다. 아래 원본 체크섬과 NCBI 링크를 이용하여 확보하고 검증할 수 있다. NCBI에서 내려받은 주석이나 파일 형식이 달라져 체크섬이 불일치할 수 있으므로 해당 경우에는 실제 사용 원본을 확보해야 한다.
 
 ## 4. 실행 환경과 데이터 준비
 
@@ -921,6 +921,12 @@ echo "Pipeline completed: $OUT"
 
 ### 작은 예제로 검증
 
+실제 검증에 사용된 소스가 변경되지 않았는지 확인한다.
+
+```bash
+sha256sum -c verification/source_sha256.txt
+```
+
 ```bash
 python test_all.py
 python demo.py
@@ -928,6 +934,23 @@ bash run_all.sh demo_strains.csv demo_data demo_results 3
 bash run_all.sh demo_strains.csv demo_data demo_repeat 3
 diff -r demo_results demo_repeat && echo 'Reproducibility PASS'
 ```
+
+### 실제 유전체 1종부터 실습하기
+
+저장소에 포함된 실제 [B. aphidicola GenBank](data/NC_002528.1.gb) 및 [FASTA](data/NC_002528.1.fasta)를 이용한다. 다음 명령은 9종 전체가 없어도 실행할 수 있다.
+
+```bash
+python analyze.py --fasta-only data/NC_002528.1.fasta --out live
+head -n 7 live/fasta_frames.csv
+```
+
+```bash
+head -n 1 strains.csv > custom_strains.csv
+grep '^B_aphidicola,' strains.csv >> custom_strains.csv
+bash run_all.sh custom_strains.csv data custom_results 3
+```
+
+이 실습은 실제 한 종을 분석하므로 종 간 상관계수는 정의되지 않는다. 9종 분석을 대신하지 않는다.
 
 ### 실제 유전체 9종
 
@@ -984,7 +1007,7 @@ Spearman ρ = 0.9667 (n=9): GC와 평균 종결 간격의 양의 순위상관이
 
 공개 결과: [균주 요약](results/strain_summary.csv) · [6-frame](results/frames.csv) · [셔플](results/shuffle.csv) · [영역](results/regions.csv) · [프레임 이동](results/shifts.csv) · [상관](results/correlations.csv) · [그룹 비교](results/lifestyle.csv) · [FASTA 시연](verification/fasta_frames.csv).
 
-원래 파이프라인은 추가로 `genes.csv`, `run_info.json`과 그림 8개를 생성한다. 아직 저장소에 없는 원본 출력은 동일 입력으로 실행하여 생성할 수 있다.
+[CDS별 기록](results/genes.csv) · [실행 설정 및 입력 해시](results/run_info.json)도 공개한다. 원본 그림 8개는 아직 전송되지 않았으며, 모든 결과 CSV가 있으므로 `python plot.py results`로 다시 생성할 수 있다.
 
 ## 9. 분석의 한계 및 참고자료
 
