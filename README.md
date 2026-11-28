@@ -4,45 +4,36 @@
 
 충남대학교 생명정보융합학과 강유지
 
-DNA 서열을 FASTA로 입력하면 양쪽 가닥을 각각 세 위치에서 읽고, 같은 읽기 틀에서 연속한 두 종결 코돈 사이에 몇 개의 코돈이 있는지 계산한다. 이 프로그램을 세균 9종의 대표 염색체에 적용해 GC 함량과 평균 간격의 관계를 조사했다.
+GC 함량이 높은 세균에서 종결 코돈 사이의 간격도 긴지 조사했다. DNA FASTA를 입력으로 받아 여섯 읽기 틀에서 간격을 계산한 뒤, 같은 코드를 세균 9종의 대표 염색체에 적용했다.
 
-[내 FASTA 분석하기](#내-fasta-분석하기) · [전체 분석 재현하기](#전체-분석-재현하기) · [LLM 학습 기록](#llm-활용-기록) · [파일별 전체 코드](#파일별-전체-코드)
+[실행 환경](#실행-환경) · [FASTA 분석](#fasta-분석) · [9종 분석 결과](#세균-9종에-적용한-결과) · [전체 분석 재현](#전체-분석-재현하기) · [LLM 학습 기록](#llm-활용-기록) · [전체 코드](#파일별-전체-코드)
 
-## 내 FASTA 분석하기
+## 실행 환경
 
-MobaXterm에서 학교 리눅스 서버에 SSH로 접속해 실행했다. 
-```
-
-내 컴퓨터에 있는 FASTA는 MobaXterm 왼쪽 SFTP 창에서 서버의 프로젝트 폴더로 올린다. 터미널에서 `pwd`로 현재 위치를, `ls`로 업로드한 파일 이름을 확인한다. 아래 명령에서 따옴표 안의 이름을 바꾸면 다른 서열에도 같은 계산을 할 수 있다.
+MobaXterm에서 SSH로 학교 리눅스 서버에 접속해 Bash와 Python으로 분석했다.
 
 ```bash
-python analyze.py --fasta-only "my_sequence.fasta" --out my_result
-head -n 7 my_result/fasta_frames.csv
+git clone https://github.com/elin9785-afk/yujikang.git
+cd yujikang
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-verified.txt
 ```
 
-각 FASTA 레코드를 독립적으로 읽어 양쪽 가닥의 세 읽기 틀을 계산한다. 레코드 하나당 결과는 여섯 행이다. GC 함량, 종결 코돈 개수(`stops`), 완전한 종결 간격 수(`gaps`), 평균 간격(`mean_gap`)을 확인할 수 있다. 기본 번역표는 세균용 11번이다. CDS 안팎 비교에는 GenBank 주석이 필요하다.
+## FASTA 분석
 
-아래는 FASTA 파일에 들어가는 내용이다. `my_sequence.fasta`로 저장하면 +1 읽기 틀의 결과를 손으로 검산할 수 있다.
-
-```text
->demo
-TAAAAGGGCTAG
-```
-
-+1 틀은 `TAA | AAG | GGC | TAG`이므로 기대값은 `stops=2`, `gaps=1`, `mean_gap=2`이다. 가운데에 `CCC`를 하나 추가한 `TAAAAGGGCCCCTAG`을 넣으면 평균 간격은 3이 된다. 계산할 수 있는 종결 간격이 없는 틀에서는 평균 칸이 비어 있다.
-
-발표에서는 저장소에 포함한 [Buchnera FASTA](data/NC_002528.1.fasta)로 바로 실행할 수 있다.
+단일 FASTA 실행에 사용한 입력은 *Buchnera aphidicola*의 염색체 서열이다. 입력 파일은 `--fasta-only`로 지정하며, 균주 목록은 읽지 않는다.
 
 ```bash
 python analyze.py --fasta-only data/NC_002528.1.fasta --out live
 head -n 7 live/fasta_frames.csv
 ```
 
-출력 첫 줄은 열 이름이고 그다음 여섯 줄이 읽기 틀별 결과다. CSV를 내 컴퓨터에서 보려면 SFTP 창의 `live` 폴더에서 `fasta_frames.csv`를 내려받는다.
+`live/fasta_frames.csv`에는 서열 하나당 여섯 행이 기록된다. 이 염색체는 640,681 bp이고, +1 읽기 틀에서 종결 코돈은 16,384개, 그 사이의 평균 간격은 12.03코돈이었다.
 
-## 코드가 계산하는 값
+## 종결 간격 계산
 
-[analyze.py](analyze.py)가 입력을 읽고 [dna_tools.py](dna_tools.py)가 읽기 틀별 종결 개수와 간격을 센다. 전체 평균은 여섯 틀에서 얻은 모든 완전한 간격을 합쳐 계산한다. 첫 종결 앞과 마지막 종결 뒤, 모호한 코돈을 가로지르는 구간, 염색체 양 끝을 잇는 구간은 제외한다. GC 함량은 A·C·G·T의 총수를 분모로 계산한다.
+[analyze.py](analyze.py)가 입력을 읽고 [dna_tools.py](dna_tools.py)가 읽기 틀별 종결 개수와 간격을 센다. 예를 들어 `TAA | AAG | GGC | TAG`에서 두 종결 코돈 사이의 간격은 2코돈이다. 전체 평균은 여섯 틀에서 얻은 모든 완전한 간격을 합쳐 계산한다. 첫 종결 앞과 마지막 종결 뒤, 모호한 코돈을 가로지르는 구간, 염색체 양 끝을 잇는 구간은 제외한다. GC 함량은 A·C·G·T의 총수를 분모로 계산한다.
 
 | 질문 | 계산 방법 | 결과 |
 |---|---|---|
@@ -78,7 +69,7 @@ GC 함량과 평균 종결 간격의 Spearman 순위상관은 0.9667이었다. 9
 
 ## 전체 분석 재현하기
 
-[data](data/)에는 8종의 FASTA·GenBank를 나누어 담은 ZIP 3개와, 시연용으로 풀어 둔 나머지 1종의 두 파일이 있다. 아래 명령은 로컬 원본을 복원하고 [18개 체크섬](data/input_sha256.txt)을 검사한 뒤 새 폴더에 결과를 쓴다.
+[data](data/)에는 8종의 FASTA·GenBank를 나누어 담은 ZIP 3개와, 압축하지 않은 나머지 1종의 FASTA·GenBank이 있다. 로컬 원본을 복원하고 [18개 체크섬](data/input_sha256.txt)을 검사한 뒤 새 폴더에 결과를 쓴다.
 
 ```bash
 python download_data.py
@@ -88,7 +79,7 @@ bash run_all.sh strains.csv data reproduced_results 3
 
 [run_all.sh](run_all.sh)는 [테스트](test_all.py), [유전체 분석](analyze.py), [종 간 비교](compare.py), [그림 생성](plot.py), [출력 검사](check_output.py) 순으로 실행한다. `--fasta-only`는 서열만 읽고, CDS 분석에는 GenBank 주석을 사용한다. 다른 GenBank 입력은 `strains.csv`와 같은 열을 가진 별도 목록에 파일명과 번역표를 지정한다.
 
-**재현성 검사** — 아래 명령은 임시 폴더에서 재실행한 결과와 저장된 표를 대조한다.
+재현성 검사는 임시 폴더에서 생성한 결과와 저장소의 결과표를 대조한다.
 
 ```bash
 python verify_reproducibility.py
@@ -113,15 +104,11 @@ python verify_reproducibility.py --full
 
 ChatGPT로 역상보 가닥의 읽기 틀을 구현하는 방법과 셔플에서 보존할 조건을 공부했다. 여러 균주의 입력을 처리하는 코드 작성·수정, 문서 정리, 별도 환경의 재실행 검증에도 도움을 받았다.
 
-| LLM으로 공부한 내용 | 코드에 적용한 방법 | 확인 방법 |
-|---|---|---|
-| 반대 가닥에서 읽기 틀을 잡는 법 | 역상보 서열을 만든 뒤 원래 가닥과 역상보 가닥을 각각 0·1·2번 위치부터 세 염기씩 읽는다. | `test_all.py`에서 여섯 틀이 나오는지, 역상보에서만 보이는 종결 코돈도 잡히는지 검사한다. |
-| 염기 조성이 같은 대조군을 만드는 법 | A·C·G·T의 순서만 섞고 모호한 염기의 위치는 유지한다. | 셔플 전후의 염기 개수와 모호한 염기 위치를 대조하고, 같은 시드에서 같은 서열이 나오는지 검사한다. |
-| 입력을 바꿔도 같은 계산을 쓰는 법 | FASTA 레코드마다 같은 함수를 호출하고 결과 행에 레코드 이름과 읽기 틀을 기록한다. | 위의 짧은 FASTA에서 코돈 하나를 추가해 +1 틀의 평균 간격이 2에서 3으로 바뀌는지 확인할 수 있다. |
+역상보 가닥도 처음 세 위치에서 각각 읽어야 여섯 읽기 틀이 나온다는 점을 배웠다. `six_frames`에서 두 가닥에 같은 함수를 적용했고, `test_all.py`에는 역상보에서 종결 코돈이 잡히는 예를 넣었다.
+
+셔플 대조군을 만들 때는 염기 조성을 유지해야 원본과 비교할 근거가 생긴다. A·C·G·T의 개수와 모호한 염기의 위치는 유지하고 순서만 섞었다. 같은 시드에서 같은 결과가 나오는지도 검사했다.
 
 ## 파일별 전체 코드
-
-아래 Step 01–13은 최종 9종 분석의 전체 소스 및 설정 파일이다. 각 코드 블록을 해당 파일명으로 저장할 수 있으며, 위의 실행 방법에 따라 순서대로 분석과 검증을 수행한다. 원본 데이터는 `data/`에 포함된 압축 파일에서 복원한다.
 
 ### Step 01. 필요 라이브러리 — requirements.txt
 
