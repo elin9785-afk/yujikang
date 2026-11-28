@@ -1,33 +1,32 @@
-# GC 함량이 비슷한 세균도 종결 코돈 간격이 비슷할까?
+# 세균의 GC 함량과 종결 코돈 사이의 거리
 
 충남대학교 생명정보융합학과 강유지
 
 GC 함량이 높은 세균에서는 같은 읽기 틀의 다음 종결 코돈까지 거리가 더 길까? 처음에는 *Clostridioides difficile*과 *Streptomyces coelicolor*를 비교했고, 최종 분석에서는 세균 9종의 대표 염색체를 하나씩 사용했다.
 
-![세균 9종의 GC 함량과 평균 종결 간격](results/figures/02_gc_gap.png)
+### 내 DNA 서열로 실행하기
 
-## 9종 전체의 경향은 가까운 두 종에서도 보일까?
-
-9종에서 GC 함량과 평균 종결 간격의 순위상관은 0.9667이었다. 이 결과를 한 쌍씩 살펴보기 위해 가능한 36쌍 중 GC 함량 차이가 1%p 이하인 쌍을 모두 골랐다. 각 쌍에서 GC가 높은 종의 평균 간격에서 낮은 종의 값을 뺐다. 셔플 열은 각 종의 염기를 세 번 섞어 얻은 평균 간격에 같은 계산을 적용한 값이다.
-
-| GC가 낮은 종 → 높은 종 | GC 차이 (%p) | 원본 간격 차이 (코돈) | 셔플 간격 차이 (코돈) |
-|---|---:|---:|---:|
-| *R. prowazekii* → *C. difficile* | 0.060 | +0.97 | +0.02 |
-| *P. aeruginosa* → *C. crescentus* | 0.658 | −8.00 | +1.55 |
-| *M. tuberculosis* → *P. aeruginosa* | 0.941 | +9.54 | +2.09 |
-
-두 번째 쌍에서는 GC 함량이 66.56%에서 67.21%로 높아지는데 원본 평균 간격은 61.82에서 53.82코돈으로 짧아졌다. 같은 쌍의 셔플에서는 차이의 방향이 뒤집혔다. 전체 순위상관이 높더라도 GC가 가까운 두 종의 순서까지 항상 예측할 수는 없었다.
-
-### 직접 확인하기
-
-저장소 최상위 폴더에서 아래 명령을 실행하면 [9종 결과표](results/strain_summary.csv)를 읽어 비교한 쌍과 차이를 출력한다. [비교 코드](similar_gc.py)는 Python 표준 라이브러리만 사용한다.
+아래 명령은 환경 설정을 마친 뒤 저장소 최상위 폴더에서 실행한다. `my_sequence.fasta`를 분석할 DNA FASTA의 경로로 바꾸면 된다. 균주 목록에 등록할 필요가 없다.
 
 ```bash
-python similar_gc.py
-python similar_gc.py --max-gc-diff 0.5
+python analyze.py --fasta-only my_sequence.fasta --out my_result
+head -n 7 my_result/fasta_frames.csv
 ```
 
-1%p는 탐색을 위한 기준이다. 0.5%p로 좁히면 36쌍 중 첫 번째 쌍만 남는다. 한 종이 여러 쌍에 포함될 수 있고 종마다 대표 염색체 하나를 사용했으므로, 표는 관찰된 사례를 비교하는 용도로 해석했다.
+각 FASTA 레코드를 독립적으로 읽어 양쪽 가닥의 세 읽기 틀을 계산한다. 레코드 하나당 결과는 여섯 행이다. GC 함량, 종결 코돈 개수(`stops`), 완전한 종결 간격 수(`gaps`), 평균 간격(`mean_gap`)을 확인할 수 있다. 기본 번역표는 세균용 11번이다. CDS 안팎 비교에는 GenBank 주석이 필요하다.
+
+**손으로 확인할 수 있는 입력** — 아래 내용을 `my_sequence.fasta`로 저장하면 된다.
+
+```text
+>demo
+TAAAAGGGCTAG
+```
+
++1 틀은 `TAA | AAG | GGC | TAG`이므로 기대값은 `stops=2`, `gaps=1`, `mean_gap=2`이다. 가운데에 `CCC`를 하나 추가한 `TAAAAGGGCCCCTAG`을 넣으면 평균 간격은 3이 된다. 계산할 수 있는 종결 간격이 없는 틀에서는 평균 칸이 비어 있다.
+
+### 세균 9종에 적용한 결과
+
+![세균 9종의 GC 함량과 평균 종결 간격](results/figures/02_gc_gap.png)
 
 ## 무엇을 셌나
 
@@ -64,7 +63,7 @@ source .venv/bin/activate
 python -m pip install -r requirements-verified.txt
 ```
 
-**FASTA 시연** — 저장소에 풀어 둔 *Buchnera aphidicola* FASTA로 바로 실행한다. 출력은 여섯 줄이며 `frame`은 읽기 틀, `stops`는 종결 개수, `mean_gap`은 평균 간격이다. 다른 FASTA 경로로 바꿔도 같은 계산을 한다.
+**예제 FASTA 시연** — 저장소에 풀어 둔 *Buchnera aphidicola* FASTA로 바로 실행한다. 출력은 여섯 줄이며 `frame`은 읽기 틀, `stops`는 종결 개수, `mean_gap`은 평균 간격이다. 다른 FASTA 경로로 바꿔도 같은 계산을 한다.
 
 ```bash
 python analyze.py --fasta-only data/NC_002528.1.fasta --out live
