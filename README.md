@@ -12,12 +12,7 @@ GC 함량이 높은 세균에서 종결 코돈 사이의 간격도 긴지 조사
 
 MobaXterm에서 SSH로 학교 리눅스 서버에 접속해 Bash와 Python으로 분석했다.
 
-```bash
-git clone https://github.com/elin9785-afk/yujikang.git
-cd yujikang
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements-verified.txt
+
 ```
 
 ## FASTA 분석
