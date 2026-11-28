@@ -10,27 +10,7 @@ DNA 서열을 FASTA로 입력하면 양쪽 가닥을 각각 세 위치에서 읽
 
 ## 내 FASTA 분석하기
 
-MobaXterm에서 학교 리눅스 서버에 SSH로 접속해 실행했다. 아래 Bash 명령은 접속한 서버의 터미널에 입력한다.
-
-<details>
-<summary>MobaXterm으로 서버에 처음 접속했을 때 · 설치 명령 펼치기</summary>
-
-```bash
-cd ~
-git clone https://github.com/elin9785-afk/yujikang.git
-cd yujikang
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements-verified.txt
-```
-
-</details>
-
-다음 접속부터는 프로젝트 폴더로 이동해 가상환경을 다시 켠다.
-
-```bash
-cd ~/yujikang
-source .venv/bin/activate
+MobaXterm에서 학교 리눅스 서버에 SSH로 접속해 실행했다. 
 ```
 
 내 컴퓨터에 있는 FASTA는 MobaXterm 왼쪽 SFTP 창에서 서버의 프로젝트 폴더로 올린다. 터미널에서 `pwd`로 현재 위치를, `ls`로 업로드한 파일 이름을 확인한다. 아래 명령에서 따옴표 안의 이름을 바꾸면 다른 서열에도 같은 계산을 할 수 있다.
