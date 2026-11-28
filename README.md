@@ -10,10 +10,13 @@ DNA 서열을 FASTA로 입력하면 양쪽 가닥을 각각 세 위치에서 읽
 
 ## 내 FASTA 분석하기
 
+MobaXterm에서 학교 리눅스 서버에 SSH로 접속해 실행했다. 아래 Bash 명령은 접속한 서버의 터미널에 입력한다.
+
 <details>
-<summary>처음 실행할 때 · 저장소 복제와 환경 설정</summary>
+<summary>MobaXterm으로 서버에 처음 접속했을 때 · 설치 명령 펼치기</summary>
 
 ```bash
+cd ~
 git clone https://github.com/elin9785-afk/yujikang.git
 cd yujikang
 python3 -m venv .venv
@@ -23,16 +26,23 @@ python -m pip install -r requirements-verified.txt
 
 </details>
 
-저장소 최상위 폴더에서 `my_sequence.fasta`를 원하는 파일 경로로 바꿔 실행한다. 균주 목록에 등록할 필요가 없다.
+다음 접속부터는 프로젝트 폴더로 이동해 가상환경을 다시 켠다.
 
 ```bash
-python analyze.py --fasta-only my_sequence.fasta --out my_result
+cd ~/yujikang
+source .venv/bin/activate
+```
+
+내 컴퓨터에 있는 FASTA는 MobaXterm 왼쪽 SFTP 창에서 서버의 프로젝트 폴더로 올린다. 터미널에서 `pwd`로 현재 위치를, `ls`로 업로드한 파일 이름을 확인한다. 아래 명령에서 따옴표 안의 이름을 바꾸면 다른 서열에도 같은 계산을 할 수 있다.
+
+```bash
+python analyze.py --fasta-only "my_sequence.fasta" --out my_result
 head -n 7 my_result/fasta_frames.csv
 ```
 
 각 FASTA 레코드를 독립적으로 읽어 양쪽 가닥의 세 읽기 틀을 계산한다. 레코드 하나당 결과는 여섯 행이다. GC 함량, 종결 코돈 개수(`stops`), 완전한 종결 간격 수(`gaps`), 평균 간격(`mean_gap`)을 확인할 수 있다. 기본 번역표는 세균용 11번이다. CDS 안팎 비교에는 GenBank 주석이 필요하다.
 
-손으로 검산하려면 아래 내용을 `my_sequence.fasta`로 저장해 실행한다.
+아래는 FASTA 파일에 들어가는 내용이다. `my_sequence.fasta`로 저장하면 +1 읽기 틀의 결과를 손으로 검산할 수 있다.
 
 ```text
 >demo
@@ -41,7 +51,14 @@ TAAAAGGGCTAG
 
 +1 틀은 `TAA | AAG | GGC | TAG`이므로 기대값은 `stops=2`, `gaps=1`, `mean_gap=2`이다. 가운데에 `CCC`를 하나 추가한 `TAAAAGGGCCCCTAG`을 넣으면 평균 간격은 3이 된다. 계산할 수 있는 종결 간격이 없는 틀에서는 평균 칸이 비어 있다.
 
-실제 염색체로 시연하려면 입력 경로에 저장소의 [Buchnera FASTA](data/NC_002528.1.fasta)를 지정한다.
+발표에서는 저장소에 포함한 [Buchnera FASTA](data/NC_002528.1.fasta)로 바로 실행할 수 있다.
+
+```bash
+python analyze.py --fasta-only data/NC_002528.1.fasta --out live
+head -n 7 live/fasta_frames.csv
+```
+
+출력 첫 줄은 열 이름이고 그다음 여섯 줄이 읽기 틀별 결과다. CSV를 내 컴퓨터에서 보려면 SFTP 창의 `live` 폴더에서 `fasta_frames.csv`를 내려받는다.
 
 ## 코드가 계산하는 값
 
@@ -209,6 +226,7 @@ def frame_stats(s, offset, table=11):
         if codon in stop_codons:
             stops += 1
             if previous is not None:
+                # 두 종결 코돈 사이에 있는 코돈만 센다.
                 gap_sum += (pos-previous)//3 - 1
                 gaps += 1
             previous = pos
@@ -241,7 +259,7 @@ def metrics(row):
 
 
 def shuffle(s, rng):
-    # Preserve A/C/G/T counts and positions of ambiguous bases.
+    # A, C, G, T만 섞어서 N 같은 모호한 염기는 원래 자리에 둔다.
     bases = [b for b in s if b in 'ACGT']
     rng.shuffle(bases)
     it = iter(bases)
@@ -412,7 +430,7 @@ def region_stats(seq, intervals, name, region, table):
         bp += len(part)
         for base in bases:
             bases[base] += part.count(base)
-        # No codon or gap crosses an interval boundary.
+        # 떨어진 두 영역이 이어져 하나의 코돈으로 읽히지 않도록 구간별로 센다.
         counts.extend(six_frames(part,table))
     result = metrics(total_stats(counts))
     result.update(strain=name,region=region,bp=bp,segments=len(intervals),
@@ -506,13 +524,16 @@ def fasta_only(path,out,table):
 
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(
+        description='DNA의 GC 함량과 여섯 읽기 틀의 종결 코돈 간격을 계산합니다.',
+        epilog='예시: python analyze.py --fasta-only "my sequence.fasta" --out my_result',
+    )
     p.add_argument('--metadata',default='strains.csv')
     p.add_argument('--data',default='data')
-    p.add_argument('--out',default='results')
+    p.add_argument('--out', default='results', help='결과를 저장할 폴더 (기본값: results)')
     p.add_argument('--reps',type=int,default=3)
     p.add_argument('--seed',type=int,default=42)
-    p.add_argument('--fasta-only')
+    p.add_argument('--fasta-only', metavar='FASTA', help='분석할 DNA FASTA 파일 경로')
     p.add_argument('--table',type=int,default=11)
     a = p.parse_args()
     if a.fasta_only:
@@ -846,10 +867,12 @@ print('PASS: metadata order, CSV relationships, 8 figures')
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
+# 실행 예시: bash run_all.sh strains.csv data reproduced_results 3
 META="${1:-strains.csv}"
 DATA="${2:-data}"
 OUT="${3:-results}"
 REPS="${4:-3}"
+# 기능 검사 → 유전체 분석 → 종 간 비교 → 그래프 저장 → 결과 검사
 python test_all.py
 python analyze.py --metadata "$META" --data "$DATA" --out "$OUT" --reps "$REPS" --seed 42
 python compare.py "$OUT"

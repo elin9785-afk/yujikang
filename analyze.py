@@ -93,7 +93,7 @@ def region_stats(seq, intervals, name, region, table):
         bp += len(part)
         for base in bases:
             bases[base] += part.count(base)
-        # No codon or gap crosses an interval boundary.
+        # 떨어진 두 영역이 이어져 하나의 코돈으로 읽히지 않도록 구간별로 센다.
         counts.extend(six_frames(part,table))
     result = metrics(total_stats(counts))
     result.update(strain=name,region=region,bp=bp,segments=len(intervals),
@@ -187,13 +187,16 @@ def fasta_only(path,out,table):
 
 
 if __name__ == '__main__':
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(
+        description='DNA의 GC 함량과 여섯 읽기 틀의 종결 코돈 간격을 계산합니다.',
+        epilog='예시: python analyze.py --fasta-only "my sequence.fasta" --out my_result',
+    )
     p.add_argument('--metadata',default='strains.csv')
     p.add_argument('--data',default='data')
-    p.add_argument('--out',default='results')
+    p.add_argument('--out', default='results', help='결과를 저장할 폴더 (기본값: results)')
     p.add_argument('--reps',type=int,default=3)
     p.add_argument('--seed',type=int,default=42)
-    p.add_argument('--fasta-only')
+    p.add_argument('--fasta-only', metavar='FASTA', help='분석할 DNA FASTA 파일 경로')
     p.add_argument('--table',type=int,default=11)
     a = p.parse_args()
     if a.fasta_only:

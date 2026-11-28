@@ -41,6 +41,7 @@ def frame_stats(s, offset, table=11):
         if codon in stop_codons:
             stops += 1
             if previous is not None:
+                # 두 종결 코돈 사이에 있는 코돈만 센다.
                 gap_sum += (pos-previous)//3 - 1
                 gaps += 1
             previous = pos
@@ -73,7 +74,7 @@ def metrics(row):
 
 
 def shuffle(s, rng):
-    # Preserve A/C/G/T counts and positions of ambiguous bases.
+    # A, C, G, T만 섞어서 N 같은 모호한 염기는 원래 자리에 둔다.
     bases = [b for b in s if b in 'ACGT']
     rng.shuffle(bases)
     it = iter(bases)
