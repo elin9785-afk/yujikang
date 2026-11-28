@@ -41,7 +41,7 @@ source .venv/bin/activate
 python -m pip install -r requirements-verified.txt
 ```
 
-**수업 중 시연** — 저장소에 풀어 둔 *Buchnera aphidicola* FASTA로 바로 실행한다. 출력은 여섯 줄이며 `frame`은 읽기 틀, `stops`는 종결 개수, `mean_gap`은 평균 간격이다. 다른 FASTA 경로로 바꿔도 같은 계산을 한다.
+** 시연** — 저장소에 풀어 둔 *Buchnera aphidicola* FASTA로 바로 실행한다. 출력은 여섯 줄이며 `frame`은 읽기 틀, `stops`는 종결 개수, `mean_gap`은 평균 간격이다. 다른 FASTA 경로로 바꿔도 같은 계산을 한다.
 
 ```bash
 python analyze.py --fasta-only data/NC_002528.1.fasta --out live
